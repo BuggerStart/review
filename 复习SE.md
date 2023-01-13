@@ -78,7 +78,7 @@
 
 ###### 11、权限修饰符
 
-![image-20230112145147667](C:\Users\buggerstart\AppData\Roaming\Typora\typora-user-images\image-20230112145147667.png)
+![image-20230113153555867](复习SE.assets/image-20230113153555867-16735953597901.png)
 
 ###### 12、==和equals的区别
 
@@ -231,9 +231,144 @@
 
 ![image-20230113152926392](复习SE.assets/image-20230113152926392.png)
 
+###### 25、ArrayList
 
+- ​		在JDK1.8之前和之后的实现区别?
 
-​	
+  ​			JDK1.7:ArrayList像饿汉式，直接创建一个初始容量为10的数组
+
+  ​			JDK1.8：ArrayList像懒汉式，一开始创建一个长度为0的数组，当添加第一个元素的时候再创建一个始容量为10的数组。
+
+###### 26、LinkedList:
+
+​			双向链表，内部没有声明数组，而是定义了Node类型的first和last, 用于记录首尾元素，同时定义内部类Node,作为LinkedList中保存数据的基本结构。Node除了保存数据，还定义了两个变量：
+
+- ​	prev变量记录前一个元素的位置
+- ​    next变量 记录下一个元素的位置	
+
+###### 27、Vector
+
+​		Vector是一个古老的集合，JDK1.0就有了，大多数操作与ArrayList相同，区别就是线程是安全的，尽量避免使用。
+
+###### 28、请问ArrayList/LinkedList/Vector的异同？谈谈你的理解？ArrayList底层 是什么？扩容机制？Vector和ArrayList的最大区别?
+
+- ArrayList和LinkedList的异同
+
+​		二者都线程不安全，相对线程安全的Vector，执行效率高。 此外，ArrayList是实现了基于动态数组的数据结构，LinkedList基于链表的数据结构。对于 随机访问get和set，ArrayList觉得优于LinkedList，因为LinkedList要移动指针。对于新增 和删除操作add(特指插入)和remove，LinkedList比较占优势，因为ArrayList要移动数据。
+
+-  ArrayList和Vector的区别
+
+  ​	Vector和ArrayList几乎是完全相同的,唯一的区别在于Vector是同步类(synchronized)，属于 强同步类。因此开销就比ArrayList要大，访问要慢。正常情况下,大多数的Java程序员使用 ArrayList而不是Vector,因为同步完全可以由程序员自己来控制。Vector每次扩容请求其大 小的2倍空间，而ArrayList是1.5倍。Vector还有一个子类Stack。
+
+###### 29、HashSet
+
+- 集合元素可以为null
+
+- 向HashSet中添加元素的过程：
+
+  当向 HashSet 集合中存入一个元素时，HashSet 会调用该对象的 hashCode() 方法 来得到该对象的 hashCode 值，然后根据 hashCode 值，通过某种散列函数决定该对象 在 HashSet 底层数组中的存储位置。（这个散列函数会与底层数组的长度相计算得到在 数组中的下标，并且这种散列函数计算还尽可能保证能均匀存储元素，越是散列分布， 该散列函数设计的越好）
+
+  如果两个元素的hashCode()值相等，会再继续调用equals方法，如果equals方法结果 为true，添加失败；如果为false，那么会保存该元素，但是该数组的位置已经有元素了， 那么会通过链表的方式继续链接。、
+
+- 底层也是数组，初始容量为16，当如果使用率超过0.75，（16*0.75=12） 就会扩大容量为原来的2倍。（16扩容为32，依次为64,128....等）
+
+###### 30、LinkedHashSet
+
+- LinkedHashSet 根据元素的 hashCode 值来决定元素的存储位置， 但它同时使用双向链表维护元素的次序，这使得元素看起来是以插入 顺序保存的。
+- LinkedHashSet插入性能略低于 HashSet，但在迭代访问 Set 里的全 部元素时有很好的性能。
+
+###### 31、TreeSet
+
+​	TreeSet底层使用红黑树结构存储数据
+
+​	特点：有序，查询速度比List快
+
+###### 32、HashMap
+
+- HashMap是 Map 接口使用频率最高的实现类。
+
+- 允许使用null键和null值，与HashSet一样，不保证映射的顺序。
+
+- 所有的key构成的集合是Set:无序的、不可重复的。所以，key所在的类要重写： equals()和hashCode()
+
+- 所有的value构成的集合是Collection:无序的、可以重复的。所以，value所在的类 要重写：equals()
+
+- HashMap 判断两个 key 相等的标准是：两个 key 通过 equals() 方法返回 true， hashCode 值也相等。
+
+- HashMap 判断两个 value相等的标准是：两个 value 通过 equals() 方法返回 true。
+
+- ![image-20230113162238238](复习SE.assets/image-20230113162238238.png)
+
+  存储结构：
+
+  ​	JDK 7及以前版本：HashMap是数组+链表结构(即为链地址法)
+
+  ​	JDK 8版本发布以后：HashMap是数组+链表+红黑树实现。
+
+  ​	默认初始容量是16 
+
+  ​	扩容达到0.75 扩容一倍
+
+###### 33、负载因子值的大小，对HashMap有什么影响
+
+-  负载因子的大小决定了HashMap的数据密度。
+- 负载因子越大密度越大，发生碰撞的几率越高，数组中的链表越容易长, 造成查询或插入时的比较次数增多，性能会下降。
+- 负载因子越小，就越容易触发扩容，数据密度也越小，意味着发生碰撞的 几率越小，数组中的链表也就越短，查询和插入时比较的次数也越小，性 能会更高。但是会浪费一定的内容空间。而且经常扩容也会影响性能，建 议初始化预设大一点的空间。
+- 按照其他语言的参考及研究经验，会考虑将负载因子设置为0.7~0.75，此 时平均检索长度接近于常数
+
+###### 34、LinkedHashMap
+
+- 在HashMap存储结构的基础上，使用了一对双向链表来记录添加 元素的顺序
+- 与LinkedHashSet类似，LinkedHashMap 可以维护 Map 的迭代 顺序：迭代顺序与 Key-Value 对的插入顺序一致
+
+###### 35、TreeMap
+
+- TreeSet底层使用红黑树结构存储数据
+- TreeMap判断两个key相等的标准：两个key通过compareTo()方法或 者compare()方法返回0。
+- TreeMap存储 Key-Value 对时，需要根据 key-value 对进行排序。 TreeMap 可以保证所有的 Key-Value 对处于有序状态。
+
+###### 36、Hashtable
+
+-  Hashtable是个古老的 Map 实现类，JDK1.0就提供了。不同于HashMap， Hashtable是线程安全的。
+-  Hashtable实现原理和HashMap相同，功能相同。底层都使用哈希表结构，查询 速度快，很多情况下可以互用。
+-  与HashMap不同，Hashtable 不允许使用 null 作为 key 和 value
+-  与HashMap一样，Hashtable 也不能保证其中 Key-Value 对的顺序
+-  Hashtable判断两个key相等、两个value相等的标准，与HashMap一致。
+
+###### 37、Properties
+
+- Properties 类是 Hashtable 的子类，该对象用于处理属性文件
+- 由于属性文件里的 key、value 都是字符串类型，所以 Properties 里的 key  和 value 都是字符串类型
+- 存取数据时，建议使用setProperty(String key,String value)方法和 getProperty(String key)方法
+
+###### 26、循环的集中方式
+
+​	①while	②do-while	③for	④增强for	⑤iterate
+
+```JAVA
+  public static void main(String[] args) {
+        ArrayList<Object> list = new ArrayList<>();
+        list.add(1);
+        list.add(3);
+        list.add(2);
+        list.add(1);
+        for (Object coll:list){
+            System.out.print(coll+"\t");
+        }
+
+    }
+```
+
+```java
+Iterator iter = coll.iterator();//回到起点
+while(iter.hasNext()){
+Object obj = iter.next();
+if(obj.equals("Tom")){
+iter.remove();
+}
+}
+
+```
 
 
 
