@@ -525,3 +525,732 @@ LIMIT ...,...
 一般情况建议你使用自连接，因为在许多 DBMS 的处理过程中，对于自连接的处理速度要比子查询快得多。
 
  可以这样理解：子查询实际上是通过未知表进行查询后的条件判断，而自连接是通过已知的自身数据表 进行条件判断，因此在大部分 DBMS 中都对自连接处理进行了优化。
+
+###### 4、标识符命名规则
+
+- 数据库名、表名不得超过30个字符，变量名限制为29个
+- 必须只能包含 A–Z, a–z, 0–9, _共63个字符
+- 数据库名、表名、字段名等对象名中间不要包含空格
+- 同一个MySQL软件中，数据库不能同名；同一个库中，表不能重名；同一个表中，字段不能重名
+- 必须保证你的字段没有和保留字、数据库系统或常用方法冲突。如果坚持使用，请在SQL语句中使 用`（着重号）引起来
+- 保持字段名和类型的一致性：在命名字段并为其指定数据类型的时候一定要保证一致性，假如数据 类型在一个表里是整数，那在另一个表里可就别变成字符型了
+
+###### 5、创建表和修改数据库
+
+```sql
+CREATE DATABASE IF NOT EXISTS 数据库名;
+```
+
+更改数据库字符集
+
+```sql
+ALTER DATABASE 数据库名 CHARACTER SET 字符集; #比如：gbk、utf8等
+```
+
+删除指定的数据库
+
+```sql
+DROP DATABASE IF EXISTS 数据库名;
+```
+
+###### 6、创建表
+
+```sql
+CREATE TABLE [IF NOT EXISTS] 表名(
+字段1, 数据类型 [约束条件] [默认值],
+字段2, 数据类型 [约束条件] [默认值],
+字段3, 数据类型 [约束条件] [默认值],
+……
+[表约束条件]
+);
+
+```
+
+```sql
+CREATE TABLE dept(
+-- int类型，自增
+deptno INT(2) AUTO_INCREMENT,
+dname VARCHAR(14),
+loc VARCHAR(13),
+-- 主键
+PRIMARY KEY (deptno)
+);
+
+```
+
+查看数据表结构
+
+```sql
+SHOW CREATE TABLE 表名\G
+```
+
+###### 7、修改表
+
+```sql
+ALTER TABLE 表名 ADD 【COLUMN】 字段名 字段类型 【FIRST|AFTER 字段名】;
+```
+
+example:
+
+```sql
+ALTER TABLE dept80
+ADD job_id varchar(15);
+
+```
+
+修改一个列
+
+```sql
+ALTER TABLE 表名 MODIFY 【COLUMN】 字段名1 字段类型 【DEFAULT 默认值】【FIRST|AFTER 字段名
+2】;
+
+```
+
+example:
+
+```sql
+ALTER TABLE dept80
+MODIFY last_name VARCHAR(30);
+```
+
+重命名一个列
+
+```sql
+ALTER TABLE 表名 CHANGE 【column】 列名 新列名 新数据类型;
+```
+
+example:
+
+```sql
+ALTER TABLE dept80
+CHANGE department_name dept_name varchar(15);
+```
+
+删除一个列
+
+```sql
+ALTER TABLE 表名 DROP 【COLUMN】字段名
+```
+
+example:
+
+```sql
+ALTER TABLE dept80
+DROP COLUMN job_id;
+```
+
+###### 8、删除表
+
+```sql
+DROP TABLE [IF EXISTS] 数据表1 [, 数据表2, …, 数据表n];
+```
+
+example:
+
+```sql
+DROP TABLE dept80;
+```
+
+###### 9、 清空表
+
+```sql
+TRUNCATE TABLE detail_dept;
+```
+
+- TRUNCATE语句不能回滚，而使用 DELETE 语句删除数据，可以回滚		
+
+​		阿里开发规范： 【参考】TRUNCATE TABLE 比 DELETE 速度快，且使用的系统和事务日志资源少，但 TRUNCATE 无事务且不触发 TRIGGER，有可能造成事故，故不建议在开发代码中使用此语句。 说明：TRUNCATE TABLE 在功能上与不带 WHERE 子句的 DELETE 语句相同。
+
+###### 10、插入数据
+
+```sql
+INSERT INTO 表名
+VALUES (value1,value2,....);
+```
+
+example:
+
+```sql
+INSERT INTO departments(department_id, department_name)
+VALUES (80, 'IT');
+```
+
+-  同时插入多条记录
+
+```sql
+INSERT INTO table_name(column1 [, column2, …, columnn])
+VALUES
+(value1 [,value2, …, valuen]),
+(value1 [,value2, …, valuen]),
+……
+(value1 [,value2, …, valuen]);
+```
+
+example:
+
+```sql
+mysql> INSERT INTO emp(emp_id,emp_name)
+-> VALUES (1001,'shkstart'),
+-> (1002,'atguigu'),
+-> (1003,'Tom');
+Query OK, 3 rows affected (0.00 sec)
+Records: 3 Duplicates: 0 Warnings: 0
+```
+
+- 还有一种格式
+
+```sql
+INSERT INTO 目标表名
+(tar_column1 [, tar_column2, …, tar_columnn])
+SELECT
+(src_column1 [, src_column2, …, src_columnn])
+FROM 源表名
+[WHERE condition]
+```
+
+example
+
+```sql
+INSERT INTO sales_reps(id, name, salary, commission_pct)
+SELECT employee_id, last_name, salary, commission_pct
+FROM employees
+WHERE job_id LIKE '%REP%';
+```
+
+###### 11、更新数据
+
+```sql
+UPDATE table_name
+SET column1=value1, column2=value2, … , column=valuen
+[WHERE condition]
+```
+
+example:
+
+```sql
+UPDATE employees
+SET department_id = 70
+WHERE employee_id = 113;
+```
+
+###### 12、删除数据
+
+```sql
+DELETE FROM table_name 
+[WHERE <condition>];
+```
+
+example:
+
+```sql
+DELETE FROM departments
+WHERE department_name = 'Finance';
+```
+
+###### 13、为什么需要约束(constraint)
+
+​		数据完整性（Data Integrity）是指数据的精确性（Accuracy）和可靠性（Reliability）。它是防止数据库中 存在不符合语义规定的数据和防止因错误信息的输入输出造成无效操作或错误信息而提出的。
+
+###### 14、 什么是约束
+
+约束是表级的强制规定。
+
+可以在创建表时规定约束（通过 CREATE TABLE 语句），或者在表创建之后通过 ALTER TABLE 语句规定约束。
+
+###### 15、约束的分类
+
+![image-20230116162359236](复习SE.assets/image-20230116162359236-16738574419671.png)
+
+###### 16、添加非空约束
+
+- 建表时
+
+```sql
+CREATE TABLE 表名称(
+字段名 数据类型,
+字段名 数据类型 NOT NULL,
+字段名 数据类型 NOT NULL
+);
+
+```
+
+example
+
+```sql
+CREATE TABLE student(
+sid int,
+sname varchar(20) not null,
+tel char(11) ,
+cardid char(18) not null
+);
+```
+
+- 建表后
+
+```sql
+alter table 表名称 modify 字段名 数据类型 not null;
+```
+
+example:
+
+```sql
+ALTER TABLE emp
+MODIFY sex VARCHAR(30) NOT NULL;
+```
+
+###### 17、删除非空约束
+
+```sql
+alter table 表名称 modify 字段名 数据类型 NULL;#去掉not null，相当于修改某个非注解字段，该字段允
+许为空
+或
+alter table 表名称 modify 字段名 数据类型;#去掉not null，相当于修改某个非注解字段，该字段允许为空
+```
+
+example:
+
+```sql
+ALTER TABLE emp
+MODIFY sex VARCHAR(30) NULL;
+```
+
+###### 18、唯一性约束
+
+- 建表时
+
+```sql
+create table 表名称(
+字段名 数据类型,
+字段名 数据类型 unique,
+字段名 数据类型 unique key,
+字段名 数据类型
+);
+create table 表名称(
+字段名 数据类型,
+字段名 数据类型,
+字段名 数据类型,
+[constraint 约束名] unique key(字段名)
+);
+```
+
+example
+
+```sql
+CREATE TABLE t_course(
+cid INT UNIQUE,
+cname VARCHAR(100) UNIQUE,
+description VARCHAR(200)
+);
+
+
+CREATE TABLE USER(
+id INT NOT NULL,
+NAME VARCHAR(25),
+PASSWORD VARCHAR(16),
+-- 使用表级约束语法
+CONSTRAINT uk_name_pwd UNIQUE(NAME,PASSWORD)
+);
+```
+
+- 建表后
+
+```sql
+#字段列表中如果是一个字段，表示该列的值唯一。如果是两个或更多个字段，那么复合唯一，即多个字段的组合是唯
+一的
+#方式1：
+alter table 表名称 add unique key(字段列表);
+#方式2：
+alter table 表名称 modify 字段名 字段类型 unique;
+```
+
+example:
+
+```sql
+ALTER TABLE USER
+MODIFY NAME VARCHAR(20) UNIQUE;
+
+
+create table student(
+sid int primary key,
+sname varchar(20),
+tel char(11) ,
+cardid char(18)
+);
+alter table student add unique key(tel);
+alter table student add unique key(cardid);
+```
+
+###### 19、 删除唯一约束
+
+```sql
+ALTER TABLE USER
+DROP INDEX uk_name_pwd;
+```
+
+###### 20、主键约束
+
+​		主键约束相当于唯一约束+非空约束的组合，主键约束列不允许重复，也不允许出现空值。
+
+- 建表前
+
+```sql
+create table 表名称(
+字段名 数据类型 primary key, #列级模式
+字段名 数据类型,
+字段名 数据类型
+);
+create table 表名称(
+字段名 数据类型,
+字段名 数据类型,
+字段名 数据类型,
+[constraint 约束名] primary key(字段名) #表级模式
+);
+
+```
+
+example:
+
+```sql
+create table temp(
+id int primary key,
+name varchar(20)
+);
+
+CREATE TABLE emp4(
+id INT PRIMARY KEY AUTO_INCREMENT ,
+NAME VARCHAR(20)
+);
+
+CREATE TABLE emp5(
+id INT NOT NULL AUTO_INCREMENT,
+NAME VARCHAR(20),
+pwd VARCHAR(15),
+CONSTRAINT emp5_id_pk PRIMARY KEY(id)
+);
+```
+
+- 建表后
+
+```sql
+ALTER TABLE 表名称 ADD PRIMARY KEY(字段列表); #字段列表可以是一个字段，也可以是多个字段，如果是多个字段的话，是复合主键
+```
+
+```sql
+ALTER TABLE emp5 ADD PRIMARY KEY(NAME,pwd);
+```
+
+###### 21、复合主键
+
+```sql
+create table 表名称(
+字段名 数据类型,
+字段名 数据类型,
+字段名 数据类型,
+primary key(字段名1,字段名2) #表示字段1和字段2的组合是唯一的，也可以有更多个字段
+);
+```
+
+example:
+
+```sql
+#选课表
+create table student_course(
+sid int,
+cid int,
+score int,
+primary key(sid,cid) #复合主键
+);
+```
+
+###### 22、删除主键约束
+
+```sql
+alter table 表名称 drop primary key;
+```
+
+example:
+
+```sql
+ALTER TABLE emp5 DROP PRIMARY KEY;
+```
+
+###### 23、自增列：AUTO_INCREMENT
+
+- 特点和要求
+  1. 一个表最多只能有一个自增长列
+  2. 当需要产生唯一标识符或顺序值时，可设置自增长
+  3. 自增长列约束的列必须是键列（主键列，唯一键列）
+  4. 自增约束的列的数据类型必须是整数类型
+  5. 如果自增列指定了 0 和 null，会在当前最大值的基础上自增；如果自增列手动指定了具体值，直接 赋值为具体值。
+
+###### 24、指定自增约束
+
+- ​	建表时
+
+```sql
+create table 表名称(
+字段名 数据类型 primary key auto_increment,
+字段名 数据类型 unique key not null,
+字段名 数据类型 unique key,
+字段名 数据类型 not null default 默认值,
+);
+create table 表名称(
+字段名 数据类型 default 默认值 ,
+字段名 数据类型 unique key auto_increment,
+字段名 数据类型 not null default 默认值,,
+primary key(字段名)
+);
+
+```
+
+example:
+
+```sql
+create table employee(
+eid int primary key auto_increment,
+ename varchar(20)
+);
+
+```
+
+- 建表后
+
+```sql
+alter table 表名称 modify 字段名 数据类型 auto_increment;
+```
+
+example:
+
+```sql
+alter table employee modify eid int auto_increment;
+```
+
+###### 25、删除自增约束
+
+```sql
+#alter table 表名称 modify 字段名 数据类型 auto_increment;#给这个字段增加自增约束
+alter table 表名称 modify 字段名 数据类型; #去掉auto_increment相当于删除
+```
+
+example:
+
+```sql
+alter table employee modify eid int;
+```
+
+###### 26、FOREIGN KEY 约束
+
+- 作用
+
+​		限定某个表的某个字段的引用完整性。 比如：员工表的员工所在部门的选择，必须在部门表能找到对应的部分。
+
+- 添加外键约束
+
+  ①建表时
+
+  ```sql
+  create table 主表名称(
+  字段1 数据类型 primary key,
+  字段2 数据类型
+  );
+  create table 从表名称(
+  字段1 数据类型 primary key,
+  字段2 数据类型,
+  [CONSTRAINT <外键约束名称>] FOREIGN KEY（从表的某个字段) references 主表名(被参考字段)
+  );
+  #(从表的某个字段)的数据类型必须与主表名(被参考字段)的数据类型一致，逻辑意义也一样
+  #(从表的某个字段)的字段名可以与主表名(被参考字段)的字段名一样，也可以不一样
+  -- FOREIGN KEY: 在表级指定子表中的列
+  -- REFERENCES: 标示在父表中的列
+  ```
+
+  example:
+
+  ```sql
+  create table dept( #主表
+  did int primary key, #部门编号
+  dname varchar(50) #部门名称
+  );
+  create table emp(#从表
+  eid int primary key, #员工编号
+  ename varchar(5), #员工姓名
+  deptid int, #员工所在的部门
+  foreign key (deptid) references dept(did) #在从表中指定外键约束
+  #emp表的deptid和和dept表的did的数据类型一致，意义都是表示部门的编号
+  );
+  说明：
+  （1）主表dept必须先创建成功，然后才能创建emp表，指定外键成功。
+  （2）删除表时，先删除从表emp，再删除主表dept
+  
+  ```
+
+  ​	②建表后
+
+  ```sql
+  ALTER TABLE 从表名 ADD [CONSTRAINT 约束名] FOREIGN KEY (从表的字段) REFERENCES 主表名(被引用
+  字段) [on update xx][on delete xx];
+  ```
+
+  example:
+
+  ```sql
+  ALTER TABLE emp1
+  ADD [CONSTRAINT emp_dept_id_fk] FOREIGN KEY(dept_id) REFERENCES dept(dept_id);
+  
+  ```
+
+###### 27、删除外键约束
+
+```sql
+(1)第一步先查看约束名和删除外键约束
+SELECT * FROM information_schema.table_constraints WHERE table_name = '表名称';#查看某个表的约束名
+ALTER TABLE 从表名 DROP FOREIGN KEY 外键约束名;
+（2）第二步查看索引名和删除索引。（注意，只能手动删除）
+SHOW INDEX FROM 表名称; #查看某个表的索引名
+ALTER TABLE 从表名 DROP INDEX 索引名;
+
+```
+
+example:
+
+```sql
+mysql> SELECT * FROM information_schema.table_constraints WHERE table_name = 'emp';
+mysql> alter table emp drop foreign key emp_ibfk_1;
+Query OK, 0 rows affected (0.02 sec)
+Records: 0 Duplicates: 0 Warnings: 0
+
+```
+
+```sql
+mysql> show index from emp;
+mysql> alter table emp drop index deptid;
+Query OK, 0 rows affected (0.01 sec)
+Records: 0 Duplicates: 0 Warnings: 0
+mysql> show index from emp;
+```
+
+###### 28、如果两个表之间有关系（一对一、一对多），比如：员工表和部门表（一对多），它们之间是否 一定要建外键约束？
+
+答：不是的
+
+###### 29、建和不建外键约束有什么区别？
+
+答：建外键约束，你的操作（创建表、删除表、添加、修改、删除）会受到限制，从语法层面受到限 制。例如：在员工表中不可能添加一个员工信息，它的部门的值在部门表中找不到。 不建外键约束，你的操作（创建表、删除表、添加、修改、删除）不受限制，要保证数据的 引用完整 性 ，只能依 靠程序员的自觉 ，或者是 在Java程序中进行限定 。例如：在员工表中，可以添加一个员工的 信息，它的部门指定为一个完全不存在的部门。
+
+###### 30、那么建和不建外键约束和查询有没有关系？
+
+答：没有
+
+阿里开发规范 【 强制 】不得使用外键与级联，一切外键概念必须在应用层解决。
+
+###### 31、CHECK 约束
+
+- 作用
+
+  检查某个字段的值是否符号xx要求，一般指的是值的范围
+
+```sql
+create table employee(
+eid int primary key,
+ename varchar(5),
+gender char check ('男' or '女')
+);
+```
+
+example:
+
+```sql
+CREATE TABLE temp(
+id INT AUTO_INCREMENT,
+NAME VARCHAR(20),
+age INT CHECK(age > 20),
+PRIMARY KEY(id)
+);
+```
+
+###### 32、DEFAULT约束
+
+- 作用
+
+给某个字段/某列指定默认值，一旦设置默认值，在插入数据时，如果此字段没有显式赋值，则赋值为默认值。
+
+- 建表时
+
+```sql
+create table 表名称(
+字段名 数据类型 primary key,
+字段名 数据类型 unique key not null,
+字段名 数据类型 unique key,
+字段名 数据类型 not null default 默认值,
+);
+```
+
+example:
+
+```sql
+create table employee(
+eid int primary key,
+ename varchar(20) not null,
+gender char default '男',
+tel char(11) not null default '' #默认是空字符串
+);
+CREATE TABLE myemp(
+id INT AUTO_INCREMENT PRIMARY KEY,
+NAME VARCHAR(15),
+salary DOUBLE(10,2) DEFAULT 2000
+);
+```
+
+- 建表后
+
+```sql
+alter table 表名称 modify 字段名 数据类型 default 默认值;
+#如果这个字段原来有非空约束，你还保留非空约束，那么在加默认值约束时，还得保留非空约束，否则非空约束就被
+删除了
+#同理，在给某个字段加非空约束也一样，如果这个字段原来有默认值约束，你想保留，也要在modify语句中保留默
+认值约束，否则就删除了
+alter table 表名称 modify 字段名 数据类型 default 默认值 not null;
+```
+
+example:
+
+```sql
+create table employee(
+eid int primary key,
+ename varchar(20),
+gender char,
+tel char(11) not null
+);
+```
+
+###### 33、如何删除默认值约束
+
+```sql
+alter table 表名称 modify 字段名 数据类型 ;#删除默认值约束，也不保留非空约束
+alter table 表名称 modify 字段名 数据类型 not null; #删除默认值约束，保留非空约束
+```
+
+example:
+
+```sql
+alter table employee modify gender char; #删除gender字段默认值约束，如果有非空约束，也一并删除
+alter table employee modify tel char(11) not null;#删除tel字段默认值约束，保留非空约束
+```
+
+###### 34、为什么建表时，加 not null default '' 或 default 0
+
+答：不想让表中出现null值。
+
+###### 35、为什么不想要 null 的值
+
+（1）不好比较。null是一种特殊值，比较时只能用专门的is null 和 is not null来比较。碰到运算符，通 常返回null。
+
+（2）效率不高。影响提高索引效果。因此，我们往往在建表时 not null default '' 或 default 0
+
+###### 36、带AUTO_INCREMENT约束的字段值是从1开始的吗？
+
+在MySQL中，默认AUTO_INCREMENT的初始值是1，每新增一条记录，字段值自动加1。设置自增属性（AUTO_INCREMENT）的时候，还可以指定第 一条插入记录的自增字段的值，这样新插入的记录的自增字段值从初始值开始递增，如在表中插入第一 条记录，同时指定id值为5，则以后插入的记录的id值就会从6开始往上增加。添加主键约束时，往往需要 设置字段自动增加属性。
+
+###### 37、并不是每个表都可以任意选择存储引擎？
+
+外键约束（FOREIGN KEY）不能跨引擎使用。 MySQL支持多种存储引擎，每一个表都可以指定一个不同的存储引擎，需要注意的是：外键约束是用来 保证数据的参照完整性的，如果表之间需要关联外键，却指定了不同的存储引擎，那么这些表之间是不 能创建外键约束的。所以说，存储引擎的选择也不完全是随意的。
