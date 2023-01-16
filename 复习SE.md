@@ -1254,3 +1254,383 @@ alter table employee modify tel char(11) not null;#删除tel字段默认值约�
 ###### 37、并不是每个表都可以任意选择存储引擎？
 
 外键约束（FOREIGN KEY）不能跨引擎使用。 MySQL支持多种存储引擎，每一个表都可以指定一个不同的存储引擎，需要注意的是：外键约束是用来 保证数据的参照完整性的，如果表之间需要关联外键，却指定了不同的存储引擎，那么这些表之间是不 能创建外键约束的。所以说，存储引擎的选择也不完全是随意的。
+
+###### 38、视图的理解
+
+- 为什么使用视图
+
+​		视图一方面可以帮我们使用表的一部分而不是所有的表，另一方面也可以针对不同的用户制定不同的查询视图。比如，针对一个公司的销售人员，我们只想给他看部分数据，而某些特殊的数据，比如采购的价格，则不会提供给他。再比如，人员薪酬是个敏感的字段，那么只给某个级别以上的人员开放，其他 人的查询视图中则不提供这个字段。 刚才讲的只是视图的一个使用场景，实际上视图还有很多作用。最后，我们总结视图的优点。
+
+- 创建视图
+
+  ```sql
+  CREATE [OR REPLACE]
+  [ALGORITHM = {UNDEFINED | MERGE | TEMPTABLE}]
+  VIEW 视图名称 [(字段列表)]
+  AS 查询语句
+  [WITH [CASCADED|LOCAL] CHECK OPTION]
+  ```
+
+  - 精简版
+
+  ```sql
+  CREATE VIEW 视图名称
+  AS 查询语句
+  ```
+
+  example:
+
+  ```sql
+  CREATE VIEW empvu80
+  AS
+  SELECT employee_id, last_name, salary
+  FROM employees
+  WHERE department_id = 80;
+  ```
+
+  多表联合视图example：
+
+  ```sql
+  CREATE VIEW empview
+  AS
+  SELECT employee_id emp_id,last_name NAME,department_name
+  FROM employees e,departments d
+  WHERE e.department_id = d.department_id;
+  ```
+
+  ```sql
+  CREATE VIEW emp_dept
+  AS
+  SELECT ename,dname
+  FROM t_employee LEFT JOIN t_department
+  ON t_employee.did = t_department.did;
+  ```
+
+  ```sql
+  CREATE VIEW dept_sum_vu
+  (name, minsal, maxsal, avgsal)
+  AS
+  SELECT d.department_name, MIN(e.salary), MAX(e.salary),AVG(e.salary)
+  FROM employees e, departments d
+  WHERE e.department_id = d.department_id
+  GROUP BY d.department_name;
+  ```
+
+###### 39、视图相关语句
+
+查看数据库的表对象、视图对象
+
+```sql
+SHOW TABLES;
+```
+
+查看视图的结构
+
+```sql
+DESC/ DESCRIBE 视图名称;
+```
+
+查看视图的属性信息
+
+```sql
+# 查看视图信息（显示数据表的存储引擎、版本、数据行数和数据大小等）
+SHOW TABLE STATUS LIKE '视图名称'\G
+```
+
+查看视图的详细定义信息
+
+```sql
+SHOW CREATE VIEW 视图名称;
+```
+
+###### 40、修改、删除视图
+
+- 方式一修改视图
+
+```sql
+CREATE OR REPLACE VIEW empvu80
+(id_number, name, sal, department_id)
+AS
+SELECT employee_id, first_name || ' ' || last_name, salary, department_id
+FROM employees
+WHERE department_id = 80;
+
+```
+
+- 方式二修改视图
+
+```sql
+ALTER VIEW 视图名称
+AS
+查询语句
+```
+
+###### 41、删除视图
+
+```sql
+DROP VIEW IF EXISTS 视图名称;
+```
+
+example:
+
+```sql
+DROP VIEW empvu80;
+```
+
+###### 42、存储过程与函数
+
+存储过程和函数能够将复杂的SQL逻辑封装在一起，应用程 序无须关注存储过程和函数内部复杂的SQL逻辑，而只需要简单地调用存储过程和函数即可。
+
+###### 43、存储和视图、函数的对比
+
+​		它和视图有着同样的优点，清晰、安全，还可以减少网络传输量。不过它和视图不同，视图是 虚拟表 ， 通常不对底层数据表直接操作，而存储过程是程序化的 SQL，可以 直接操作底层数据表 ，相比于面向集 合的操作方式，能够实现一些更复杂的数据处理。 一旦存储过程被创建出来，使用它就像使用函数一样简单，我们直接通过调用存储过程名即可。相较于 函数，存储过程是 没有返回值 的。
+
+###### 44、存储过程分类
+
+​		存储过程的参数类型可以是IN、OUT和INOUT。根据这点分类如下： 1、没有参数（无参数无返回） 2、仅仅带 IN 类型（有参数无返回） 3、仅仅带 OUT 类型（无参数有返 回） 4、既带 IN 又带 OUT（有参数有返回） 5、带 INOUT（有参数有返回） 注意：IN、OUT、INOUT 都可以在一个存储过程中带多个。
+
+###### 45、创建存储过程
+
+```sql
+CREATE PROCEDURE 存储过程名(IN|OUT|INOUT 参数名 参数类型,...)
+[characteristics ...]
+BEGIN
+存储过程体
+END
+```
+
+example:
+
+```sql
+DELIMITER $
+CREATE PROCEDURE select_all_data()
+BEGIN
+SELECT * FROM emps;
+END $
+DELIMITER ;
+```
+
+```sql
+DELIMITER //
+CREATE PROCEDURE avg_employee_salary ()
+BEGIN
+SELECT AVG(salary) AS avg_salary FROM emps;
+END //
+DELIMITER ;
+```
+
+```sql
+DELIMITER //
+CREATE PROCEDURE show_mgr_name(INOUT empname VARCHAR(20))
+BEGIN
+SELECT ename INTO empname FROM emps
+WHERE eid = (SELECT MID FROM emps WHERE ename=empname);
+END //
+DELIMITER ;
+
+```
+
+```sql
+DELIMITER //
+CREATE PROCEDURE show_min_salary(OUT ms DOUBLE)
+BEGIN
+SELECT MIN(salary) INTO ms FROM emps;
+END //
+DELIMITER ;
+```
+
+```sql
+DELIMITER //
+CREATE PROCEDURE show_someone_salary(IN empname VARCHAR(20))
+BEGIN
+SELECT salary FROM emps WHERE ename = empname;
+END //
+DELIMITER ;
+```
+
+```sql
+CREATE PROCEDURE show_someone_salary2(IN empname VARCHAR(20),OUT empsalary DOUBLE)
+BEGIN
+SELECT salary INTO empsalary FROM emps WHERE ename = empname;
+END //
+DELIMITER ;
+```
+
+###### 46、调用存储过程
+
+1. 调用in模式的参数：
+
+```sql
+CALL sp1('值');
+```
+
+​	2.调用out模式的参数：
+
+```sql
+SET @name;
+CALL sp1(@name);
+SELECT @name;
+```
+
+​	3.调用inout模式的参数：
+
+```sql
+SET @name=值;
+CALL sp1(@name);
+SELECT @name;
+```
+
+example:
+
+```sql
+DELIMITER //
+CREATE PROCEDURE CountProc(IN sid INT,OUT num INT)
+BEGIN
+SELECT COUNT(*) INTO num FROM fruits
+WHERE s_id = sid;
+END //
+DELIMITER ;
+
+mysql> CALL CountProc (101, @num);
+Query OK, 1 row affected (0.00 sec)
+
+SELECT @num
+```
+
+###### 47、存储函数
+
+```sql
+CREATE FUNCTION 函数名(参数名 参数类型,...)
+RETURNS 返回值类型
+[characteristics ...]
+BEGIN
+函数体 #函数体中肯定有 RETURN 语句
+END
+调用
+SELECT 函数名(实参列表)
+
+```
+
+example:
+
+```sql
+DELIMITER //
+CREATE FUNCTION email_by_name()
+RETURNS VARCHAR(25)
+DETERMINISTIC
+CONTAINS SQL
+BEGIN
+RETURN (SELECT email FROM employees WHERE last_name = 'Abel');
+END //
+DELIMITER ;
+```
+
+```sql
+DELIMITER //
+CREATE FUNCTION count_by_id(dept_id INT)
+RETURNS INT
+LANGUAGE SQL
+NOT DETERMINISTIC
+READS SQL DATA
+SQL SECURITY DEFINER
+COMMENT '查询部门平均工资'
+BEGIN
+RETURN (SELECT COUNT(*) FROM employees WHERE department_id = dept_id);
+END //
+DELIMITER ;
+```
+
+```sql
+SET @dept_id = 50;
+SELECT count_by_id(@dept_id);
+```
+
+###### 48、对比存储函数和存储过程
+
+![image-20230116231736151](复习SE.assets/image-20230116231736151-16738822585331.png)
+
+​		存储函数可以放在查询语句中使用，存储过程不行。反之，存储过程的功能更加强大，包括能够执行对表的操作（比如创建表，删除表等）和事务操作，这些功能是存储函数不具备的。
+
+###### 49、存储过程和函数的查看、修改、删除
+
+- 查看（方式一）
+
+```sql
+SHOW CREATE {PROCEDURE | FUNCTION} 存储过程名或函数名
+```
+
+example:
+
+```sql
+SHOW CREATE FUNCTION test_db.CountProc \G
+```
+
+- 查看（方式二）
+
+```sql
+SHOW {PROCEDURE | FUNCTION} STATUS [LIKE 'pattern']
+```
+
+example:
+
+```sql
+mysql> SHOW PROCEDURE STATUS LIKE 'SELECT%' \G
+*************************** 1. row ***************************
+Db: test_db
+Name: SelectAllData
+Type: PROCEDURE
+Definer: root@localhost
+Modified: 2021-10-16 15:55:07
+Created: 2021-10-16 15:55:07
+Security_type: DEFINER
+Comment:
+character_set_client: utf8mb4
+collation_connection: utf8mb4_general_ci
+Database Collation: utf8mb4_general_ci
+1 row in set (0.00 sec)
+```
+
+- 查看（方式三）
+
+```sql
+SELECT * FROM information_schema.Routines
+WHERE ROUTINE_NAME='存储过程或函数的名' [AND ROUTINE_TYPE = {'PROCEDURE|FUNCTION'}];
+```
+
+example:
+
+```sql
+SELECT * FROM information_schema.Routines
+WHERE ROUTINE_NAME='count_by_id' AND ROUTINE_TYPE = 'FUNCTION' \G
+```
+
+- 修改
+
+```sql
+ALTER {PROCEDURE | FUNCTION} 存储过程或函数的名 [characteristic ...]
+```
+
+example:
+
+```sql
+ALTER PROCEDURE CountProc
+MODIFIES SQL DATA
+SQL SECURITY INVOKER ;
+```
+
+- 删除
+
+```sql
+DROP {PROCEDURE | FUNCTION} [IF EXISTS] 存储过程或函数的名
+```
+
+example:
+
+```sql
+DROP PROCEDURE CountProc;
+
+或者
+
+DROP FUNCTION CountProc;
+```
+
