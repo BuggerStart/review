@@ -1634,3 +1634,417 @@ DROP PROCEDURE CountProc;
 DROP FUNCTION CountProc;
 ```
 
+###### 50、查看系统变量
+
+- 查看所有全局变量
+
+```sql
+SHOW GLOBAL VARIABLES;
+```
+
+- 查看所有会话变量
+
+```sql
+SHOW SESSION VARIABLES;
+或
+SHOW VARIABLES;
+
+查看满足条件的变量
+SHOW GLOBAL VARIABLES LIKE '%标识符%';
+
+SHOW SESSION VARIABLES LIKE '%标识符%';
+```
+
+example：
+
+```sql
+SHOW GLOBAL VARIABLES LIKE 'admin_%';
+```
+
+- 查看指定系统变量
+
+```sql
+SELECT @@global.变量名;
+
+SELECT @@session.变量名;
+或者
+SELECT @@变量名;
+```
+
+- 修改系统变量的值
+
+```sql
+#修改全局变量的值
+#方式1：
+SET @@global.变量名=变量值;
+#方式2：
+SET GLOBAL 变量名=变量值;
+
+
+#修改某个会话变量赋值
+#方式一
+SET @@session.变量名=变量值;
+#方式二
+SET SESSION 变量名=变量值;
+```
+
+example
+
+```sql
+SELECT @@global.autocommit;
+SET GLOBAL autocommit=0;
+```
+
+```sql
+SELECT @@session.tx_isolation;
+SET @@session.tx_isolation='read-uncommitted'
+```
+
+```sql
+SET GLOBAL max_connections = 1000;
+SELECT @@global.max_connections;
+```
+
+###### 51、会话用户变量
+
+```sql
+#方式1：“=”或“:=”
+SET @用户变量 = 值;
+SET @用户变量 := 值;
+#方式2：“:=” 或 INTO关键字
+SELECT @用户变量 := 表达式 [FROM 等子句];
+SELECT 表达式 INTO @用户变量 [FROM 等子句];
+```
+
+example:
+
+```sql
+SELECT @num := COUNT(*) FROM employees;
+SELECT @num;
+
+SELECT AVG(salary) INTO @avgsalary FROM employees;
+SELECT @avgsalary;
+
+SELECT @big; #查看某个未声明的变量时，将得到NULL值
+```
+
+###### 52、局部变量
+
+```sql
+BEGIN
+#声明局部变量
+DECLARE 变量名1 变量数据类型 [DEFAULT 变量默认值];
+DECLARE 变量名2,变量名3,... 变量数据类型 [DEFAULT 变量默认值];
+#为局部变量赋值
+SET 变量名1 = 值;
+SELECT 值 INTO 变量名2 [FROM 子句];
+#查看局部变量的值
+SELECT 变量1,变量2,变量3;
+END
+```
+
+example:
+
+```sql
+DELIMITER //
+CREATE PROCEDURE set_value()
+BEGIN
+DECLARE emp_name VARCHAR(25);
+DECLARE sal DOUBLE(10,2);
+SELECT last_name,salary INTO emp_name,sal
+FROM employees
+WHERE employee_id = 102;
+SELECT emp_name,sal;
+END //
+DELIMITER ;
+
+```
+
+```sql
+#方式1：使用用户变量
+SET @m=1;
+SET @n=1;
+SET @sum=@m+@n;
+SELECT @sum;
+```
+
+```sql
+#方式2：使用局部变量
+DELIMITER //
+CREATE PROCEDURE add_value()
+BEGIN
+#局部变量
+DECLARE m INT DEFAULT 1;
+DECLARE n INT DEFAULT 3;
+DECLARE SUM INT;
+SET SUM = m+n;
+SELECT SUM;
+END //
+DELIMITER ;
+```
+
+###### 53、对比会话用户变量与局部变量
+
+![image-20230117154336942](复习SE.assets/image-20230117154336942-16739414185501.png)
+
+###### 54、循环结构之Loop
+
+```sql
+[loop_label:] LOOP
+循环执行的语句
+END LOOP [loop_label]
+```
+
+example:
+
+```sql
+DECLARE id INT DEFAULT 0;
+add_loop:LOOP
+SET id = id +1;
+IF id >= 10 THEN LEAVE add_loop;
+END IF;
+END LOOP add_loop;
+```
+
+```sql
+DELIMITER //
+CREATE PROCEDURE update_salary_loop(OUT num INT)
+BEGIN
+DECLARE avg_salary DOUBLE;
+DECLARE loop_count INT DEFAULT 0;
+SELECT AVG(salary) INTO avg_salary FROM employees;
+label_loop:LOOP
+IF avg_salary >= 12000 THEN LEAVE label_loop;
+END IF;
+UPDATE employees SET salary = salary * 1.1;
+SET loop_count = loop_count + 1;
+SELECT AVG(salary) INTO avg_salary FROM employees;
+END LOOP label_loop;
+SET num = loop_count;
+END //
+DELIMITER ;
+```
+
+###### 55、循环REPEATE结构
+
+```sql
+[repeat_label:] REPEAT
+循环体的语句
+UNTIL 结束循环的条件表达式
+END REPEAT [repeat_label]
+```
+
+example:
+
+```sql
+DELIMITER //
+CREATE PROCEDURE test_repeat()
+BEGIN
+DECLARE i INT DEFAULT 0;
+REPEAT
+SET i = i + 1;
+UNTIL i >= 10
+END REPEAT;
+SELECT i;
+END //
+DELIMITER ;
+```
+
+###### 56、对比三种循环
+
+1、这三种循环都可以省略名称，但如果循环中添加了循环控制语句（LEAVE或ITERATE）则必须添加名称。
+
+ 2、 LOOP：一般用于实现简单的"死"循环 WHILE：先判断后执行 REPEAT：先执行后判断，无条件至少执行一次。
+
+###### 57、LEAVE语句
+
+```sql
+LEAVE 标记名
+```
+
+example:
+
+```sql
+DELIMITER //
+CREATE PROCEDURE leave_begin(IN num INT)
+begin_label: BEGIN
+IF num<=0
+THEN LEAVE begin_label;
+ELSEIF num=1
+THEN SELECT AVG(salary) FROM employees;
+ELSEIF num=2
+THEN SELECT MIN(salary) FROM employees;
+ELSE
+SELECT MAX(salary) FROM employees;
+END IF;
+SELECT COUNT(*) FROM employees;
+END //
+DELIMITER ;
+```
+
+###### 58、ITERATE
+
+```SQL
+ITERATE label
+```
+
+example
+
+```sql
+DELIMITER //
+CREATE PROCEDURE test_iterate()
+BEGIN
+DECLARE num INT DEFAULT 0;
+my_loop:LOOP
+SET num = num + 1;
+IF num < 10
+THEN ITERATE my_loop;
+ELSEIF num > 15
+END IF;
+SELECT '尚硅谷：让天下没有难学的技术';
+END LOOP my_loop;
+END //
+DELIMITER ;
+```
+
+###### 59、游标的使用
+
+```sql
+#第一步，声明游标
+DECLARE cursor_name CURSOR FOR select_statement;
+#第二步，打开游标
+OPEN cursor_name
+#第三步，使用游标（从游标中取得数据）
+FETCH cursor_name INTO var_name [, var_name] ...
+#第四步，关闭游标
+CLOSE cursor_name
+```
+
+example:
+
+```sql
+DELIMITER //
+CREATE PROCEDURE get_count_by_limit_total_salary(IN limit_total_salary DOUBLE,OUT
+total_count INT)
+BEGIN
+DECLARE sum_salary DOUBLE DEFAULT 0; #记录累加的总工资
+DECLARE cursor_salary DOUBLE DEFAULT 0; #记录某一个工资值
+DECLARE emp_count INT DEFAULT 0; #记录循环个数
+#定义游标
+DECLARE emp_cursor CURSOR FOR SELECT salary FROM employees ORDER BY salary DESC;
+#打开游标
+OPEN emp_cursor;
+REPEAT
+#使用游标（从游标中获取数据）
+FETCH emp_cursor INTO cursor_salary;
+SET sum_salary = sum_salary + cursor_salary;
+SET emp_count = emp_count + 1;
+UNTIL sum_salary >= limit_total_salary
+END REPEAT;
+SET total_count = emp_count;
+#关闭游标
+CLOSE emp_cursor;
+END //
+DELIMITER ;
+```
+
+###### 60、触发器
+
+```sql
+CREATE TRIGGER 触发器名称
+{BEFORE|AFTER} {INSERT|UPDATE|DELETE} ON 表名
+FOR EACH ROW
+触发器执行的语句块;
+```
+
+example:
+
+```sql
+#1、创建数据表：
+CREATE TABLE test_trigger (
+id INT PRIMARY KEY AUTO_INCREMENT,
+t_note VARCHAR(30)
+);
+CREATE TABLE test_trigger_log (
+id INT PRIMARY KEY AUTO_INCREMENT,
+t_log VARCHAR(30)
+);
+
+#2、创建触发器：创建名称为before_insert的触发器，向test_trigger数据表插入数据之前，向test_trigger_log数据表中插入before_insert的日志信息。
+DELIMITER //
+CREATE TRIGGER before_insert
+BEFORE INSERT ON test_trigger
+FOR EACH ROW
+BEGIN
+INSERT INTO test_trigger_log (t_log)
+VALUES('before_insert');
+END //
+DELIMITER ;
+
+#3、向test_trigger数据表中插入数据
+INSERT INTO test_trigger (t_note) VALUES ('测试 BEFORE INSERT 触发器');
+#4、查看test_trigger_log数据表中的数据
+mysql> SELECT * FROM test_trigger_log;
++----+---------------+
+| id | t_log |
++----+---------------+
+| 1 | before_insert |
++----+---------------+
+1 row in set (0.00 sec)
+```
+
+example2:
+
+```sql
+#定义触发器“salary_check_trigger”，基于员工表“employees”的INSERT事件，在INSERT之前检查将要添加的新员工薪资是否大于他领导的薪资，如果大于领导薪资，则报sqlstate_value为'HY000'的错误，从而使得添加失败。
+DELIMITER //
+CREATE TRIGGER salary_check_trigger
+BEFORE INSERT ON employees
+FOR EACH ROW
+BEGIN
+DECLARE mgrsalary DOUBLE;
+SELECT salary INTO mgrsalary FROM employees WHERE employee_id = NEW.manager_id;
+IF NEW.salary > mgrsalary THEN
+SIGNAL SQLSTATE 'HY000' SET MESSAGE_TEXT = '薪资高于领导薪资错误';
+END IF;
+END //
+DELIMITER ;
+```
+
+###### 61、查看、删除触发器
+
+- 查看 方式一
+
+```sql
+SHOW TRIGGERS\G
+```
+
+- 查看 方式二
+
+```sql
+SHOW CREATE TRIGGER 触发器名
+```
+
+- 查看 方式三
+
+```sql
+SELECT * FROM information_schema.TRIGGERS;
+```
+
+- 删除 触发器
+
+```sql
+DROP TRIGGER IF EXISTS 触发器名称;
+```
+
+###### 62、触发器优缺点
+
+- 优点
+
+1. 触发器可以确保数据的完整性。
+2. 触发器可以帮助我们记录操作日志。
+3. 触发器还可以用在操作数据前，对数据进行合法性检查。
+
+- 缺点
+  1. 触发器最大的一个问题就是可读性差。
+  2. 关数据的变更，可能会导致触发器出错。	
