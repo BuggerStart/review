@@ -2048,3 +2048,205 @@ DROP TRIGGER IF EXISTS 触发器名称;
 - 缺点
   1. 触发器最大的一个问题就是可读性差。
   2. 关数据的变更，可能会导致触发器出错。	
+
+—————————————————————————————JDBC———————————————————————————————————————
+
+# JDBC
+
+###### 1、JDBC程序编写的步骤
+
+![image-20230119152716260](复习SE.assets/image-20230119152716260-16741132388001.png)
+
+补充：ODBC(**Open Database Connectivity**，开放式数据库连接)，是微软在Windows平台下推出的。使用者在程序中只需要调用ODBC API，由 ODBC 驱动程序将调用转换成为对特定的数据库的调用请求。
+
+###### 2、数据库的连接方式
+
+- 连接方式一
+
+```java
+@Test
+    public void testConnection1() {
+        try {
+            //1.提供java.sql.Driver接口实现类的对象
+            Driver driver = null;
+            driver = new com.mysql.jdbc.Driver();
+
+            //2.提供url，指明具体操作的数据
+            String url = "jdbc:mysql://localhost:3306/test";
+
+            //3.提供Properties的对象，指明用户名和密码
+            Properties info = new Properties();
+            info.setProperty("user", "root");
+            info.setProperty("password", "abc123");
+
+            //4.调用driver的connect()，获取连接
+            Connection conn = driver.connect(url, info);
+            System.out.println(conn);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+> 说明：上述代码中显式出现了第三方数据库的API
+
+- 连接方式二
+
+```java
+	@Test
+    public void testConnection2() {
+        try {
+            //1.实例化Driver
+            String className = "com.mysql.jdbc.Driver";
+            Class clazz = Class.forName(className);
+            Driver driver = (Driver) clazz.newInstance();
+
+            //2.提供url，指明具体操作的数据
+            String url = "jdbc:mysql://localhost:3306/test";
+
+            //3.提供Properties的对象，指明用户名和密码
+            Properties info = new Properties();
+            info.setProperty("user", "root");
+            info.setProperty("password", "abc123");
+
+            //4.调用driver的connect()，获取连接
+            Connection conn = driver.connect(url, info);
+            System.out.println(conn);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+> 说明：相较于方式一，这里使用反射实例化Driver，不在代码中体现第三方数据库的API。体现了面向接口编程思想。
+
+- 连接方式三
+
+```java
+@Test
+    public void testConnection3() {
+        try {
+            //1.数据库连接的4个基本要素：
+            String url = "jdbc:mysql://localhost:3306/test";
+            String user = "root";
+            String password = "abc123";
+            String driverName = "com.mysql.jdbc.Driver";
+
+            //2.实例化Driver
+            Class clazz = Class.forName(driverName);
+            Driver driver = (Driver) clazz.newInstance();
+            //3.注册驱动
+            DriverManager.registerDriver(driver);
+            //4.获取连接
+            Connection conn = DriverManager.getConnection(url, user, password);
+            System.out.println(conn);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+```
+
+> 说明：使用DriverManager实现数据库的连接。体会获取连接必要的4个基本要素。
+
+- 连接方式四
+
+```java
+@Test
+    public void testConnection4() {
+        try {
+            //1.数据库连接的4个基本要素：
+            String url = "jdbc:mysql://localhost:3306/test";
+            String user = "root";
+            String password = "abc123";
+            String driverName = "com.mysql.jdbc.Driver";
+
+            //2.加载驱动 （①实例化Driver ②注册驱动）
+            Class.forName(driverName);
+
+
+            //Driver driver = (Driver) clazz.newInstance();
+            //3.注册驱动
+            //DriverManager.registerDriver(driver);
+            /*
+            可以注释掉上述代码的原因，是因为在mysql的Driver类中声明有：
+            static {
+                try {
+                    DriverManager.registerDriver(new Driver());
+                } catch (SQLException var1) {
+                    throw new RuntimeException("Can't register driver!");
+                }
+            }
+
+             */
+
+
+            //3.获取连接
+            Connection conn = DriverManager.getConnection(url, user, password);
+            System.out.println(conn);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+```
+
+> 说明：不必显式的注册驱动了。因为在DriverManager的源码中已经存在静态代码块，实现了驱动的注册。
+
+- 连接方式五（终极版）
+
+```java
+@Test
+    public  void testConnection5() throws Exception {
+    	//1.加载配置文件
+        InputStream is = ConnectionTest.class.getClassLoader().getResourceAsStream("jdbc.properties");
+        Properties pros = new Properties();
+        pros.load(is);
+        
+        //2.读取配置信息
+        String user = pros.getProperty("user");
+        String password = pros.getProperty("password");
+        String url = pros.getProperty("url");
+        String driverClass = pros.getProperty("driverClass");
+
+        //3.加载驱动
+        Class.forName(driverClass);
+
+        //4.获取连接
+        Connection conn = DriverManager.getConnection(url,user,password);
+        System.out.println(conn);
+
+    }
+```
+
+其中，配置文件声明在工程的src目录下：【jdbc.properties】
+
+```properties
+user=root
+password=abc123
+url=jdbc:mysql://localhost:3306/test
+driverClass=com.mysql.jdbc.Driver
+```
+
+> 说明：使用配置文件的方式保存配置信息，在代码中加载配置文件
+>
+> **使用配置文件的好处：**
+>
+> ①实现了代码和数据的分离，如果需要修改配置信息，直接在配置文件中修改，不需要深入代码
+> ②如果修改了配置信息，省去重新编译的过程。
+
+- 总结
+
+​		其实就是把user、password、url、driverCLass单独在配置文件声明，利用Class.forName(driverClass)加载驱动，最后用Connection来获取连接，就可以得到连接。
+
+> 补充：不需要再将Driver进行实体化，因为，在Driver的静态代码块中已经处理好了，直接隐式初始化
+
+###### 3、操作和访问数据库
+
+- 数据库连接被用于向数据库服务器发送命令和 SQL 语句，并接受数据库服务器返回的结果。其实一个数据库连接就是一个Socket连接。
+- 在 java.sql 包中有 3 个接口分别定义了对数据库的调用的不同方式：
+  - Statement：用于执行静态 SQL 语句并返回它所生成结果的对象。 
+  - PrepatedStatement：SQL 语句被预编译并存储在此对象中，可以使用此对象多次高效地执行该语句。
+  - CallableStatement：用于执行 SQL 存储过程
+
+![image-20230119161320407](复习SE.assets/image-20230119161320407.png)
