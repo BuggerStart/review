@@ -2250,3 +2250,287 @@ driverClass=com.mysql.jdbc.Driver
   - CallableStatement：用于执行 SQL 存储过程
 
 ![image-20230119161320407](复习SE.assets/image-20230119161320407.png)
+
+###### 4、PreparedStatement增删改code
+
+```java
+//通用的增、删、改操作（体现一：增、删、改 ； 体现二：针对于不同的表）
+	public void update(String sql,Object ... args){
+		Connection conn = null;
+		PreparedStatement ps = null;
+		try {
+			//1.获取数据库的连接
+			conn = JDBCUtils.getConnection();
+			
+			//2.获取PreparedStatement的实例 (或：预编译sql语句)
+			ps = conn.prepareStatement(sql);
+			//3.填充占位符
+			for(int i = 0;i < args.length;i++){
+				ps.setObject(i + 1, args[i]);
+			}
+			
+			//4.执行sql语句
+			ps.execute();
+		} catch (Exception e) {
+			
+			e.printStackTrace();
+		}finally{
+			//5.关闭资源
+			JDBCUtils.closeResource(conn, ps);
+			
+		}
+	}
+```
+
+###### 5、PreparedStatement查
+
+```java
+	// 通用的针对于不同表的查询:返回一个对象 (version 1.0)
+	public <T> T getInstance(Class<T> clazz, String sql, Object... args) {
+
+		Connection conn = null;
+		PreparedStatement ps = null;
+		ResultSet rs = null;
+		try {
+			// 1.获取数据库连接
+			conn = JDBCUtils.getConnection();
+
+			// 2.预编译sql语句，得到PreparedStatement对象
+			ps = conn.prepareStatement(sql);
+
+			// 3.填充占位符
+			for (int i = 0; i < args.length; i++) {
+				ps.setObject(i + 1, args[i]);
+			}
+
+			// 4.执行executeQuery(),得到结果集：ResultSet
+			rs = ps.executeQuery();
+
+			// 5.得到结果集的元数据：ResultSetMetaData
+			ResultSetMetaData rsmd = rs.getMetaData();
+
+			// 6.1通过ResultSetMetaData得到columnCount,columnLabel；通过ResultSet得到列值
+			int columnCount = rsmd.getColumnCount();
+			if (rs.next()) {
+				T t = clazz.newInstance();
+				for (int i = 0; i < columnCount; i++) {// 遍历每一个列
+
+					// 获取列值
+					Object columnVal = rs.getObject(i + 1);
+					// 获取列的别名:列的别名，使用类的属性名充当
+					String columnLabel = rsmd.getColumnLabel(i + 1);
+					// 6.2使用反射，给对象的相应属性赋值
+					Field field = clazz.getDeclaredField(columnLabel);
+					field.setAccessible(true);
+					field.set(t, columnVal);
+
+				}
+
+				return t;
+
+			}
+		} catch (Exception e) {
+
+			e.printStackTrace();
+		} finally {
+			// 7.关闭资源
+			JDBCUtils.closeResource(conn, ps, rs);
+		}
+
+		return null;
+
+	}
+```
+
+> 说明：使用PreparedStatement实现的查询操作可以替换Statement实现的查询操作，解决Statement拼串和SQL注入问题。
+
+###### 6、JDBC事务处理
+
+```java
+public void testJDBCTransaction() {
+	Connection conn = null;
+	try {
+		// 1.获取数据库连接
+		conn = JDBCUtils.getConnection();
+		// 2.开启事务
+		conn.setAutoCommit(false);
+		// 3.进行数据库操作
+		String sql1 = "update user_table set balance = balance - 100 where user = ?";
+		update(conn, sql1, "AA");
+
+		// 模拟网络异常
+		//System.out.println(10 / 0);
+
+		String sql2 = "update user_table set balance = balance + 100 where user = ?";
+		update(conn, sql2, "BB");
+		// 4.若没有异常，则提交事务
+		conn.commit();
+	} catch (Exception e) {
+		e.printStackTrace();
+		// 5.若有异常，则回滚事务
+		try {
+			conn.rollback();
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+		}
+    } finally {
+        try {
+			//6.恢复每次DML操作的自动提交功能
+			conn.setAutoCommit(true);
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+        //7.关闭连接
+		JDBCUtils.closeResource(conn, null, null); 
+    }  
+}
+```
+
+其中，对数据库操作的方法为：
+
+```java
+//使用事务以后的通用的增删改操作（version 2.0）
+public void update(Connection conn ,String sql, Object... args) {
+	PreparedStatement ps = null;
+	try {
+		// 1.获取PreparedStatement的实例 (或：预编译sql语句)
+		ps = conn.prepareStatement(sql);
+		// 2.填充占位符
+		for (int i = 0; i < args.length; i++) {
+			ps.setObject(i + 1, args[i]);
+		}
+		// 3.执行sql语句
+		ps.execute();
+	} catch (Exception e) {
+		e.printStackTrace();
+	} finally {
+		// 4.关闭资源
+		JDBCUtils.closeResource(null, ps);
+
+	}
+```
+
+###### 7、事务的ACID属性
+
+1. 原子性（Atomicity）：原子性是指事务是一个不可分割的工作单位，事务中的操作要么都发生，要么都不发生。 
+2. 一致性（Consistency）：事务必须使数据库从一个一致性状态变换到另外一个一致性状态。
+3. 隔离性（Isolation）： 事务的隔离性是指一个事务的执行不能被其他事务干扰，即一个事务内部的操作及使用的数据对并发的其他事务是隔离的，并发执行的各个事务之间不能互相干扰。
+4. 持久性（Durability）：持久性是指一个事务一旦被提交，它对数据库中数据的改变就是永久性的，接下来的其他操作和数据库故障不应该对其有任何影响。
+
+###### 8、 四种隔离级别
+
+- 数据库提供的4种事务隔离级别：
+
+  ![1555586275271](复习SE.assets/1555586275271.png)
+
+- Oracle 支持的 2 种事务隔离级别：**READ COMMITED**, SERIALIZABLE。 Oracle 默认的事务隔离级别为: **READ COMMITED** 。
+
+
+- Mysql 支持 4 种事务隔离级别。Mysql 默认的事务隔离级别为: **REPEATABLE READ。**
+
+###### 9、德鲁伊数据库连接池
+
+Druid是阿里巴巴开源平台上一个数据库连接池实现，它结合了C3P0、DBCP、Proxool等DB池的优点，同时加入了日志监控，可以很好的监控DB池连接和SQL的执行情况，可以说是针对监控而生的DB连接池，**可以说是目前最好的连接池之一。**
+
+```java
+package com.atguigu.druid;
+
+import java.sql.Connection;
+import java.util.Properties;
+
+import javax.sql.DataSource;
+
+import com.alibaba.druid.pool.DruidDataSourceFactory;
+
+public class TestDruid {
+	public static void main(String[] args) throws Exception {
+		Properties pro = new Properties();		 pro.load(TestDruid.class.getClassLoader().getResourceAsStream("druid.properties"));
+		DataSource ds = DruidDataSourceFactory.createDataSource(pro);
+		Connection conn = ds.getConnection();
+		System.out.println(conn);
+	}
+}
+```
+
+其中，src下的配置文件为：druid.properties
+
+```java
+url=jdbc:mysql://localhost:3306/test?rewriteBatchedStatements=true
+username=root
+password=123456
+driverClassName=com.mysql.jdbc.Driver
+
+initialSize=10
+maxActive=20
+maxWait=1000
+filters=wall
+```
+
+| **配置**                      | **缺省** | **说明**                                                     |
+| ----------------------------- | -------- | ------------------------------------------------------------ |
+| name                          |          | 配置这个属性的意义在于，如果存在多个数据源，监控的时候可以通过名字来区分开来。   如果没有配置，将会生成一个名字，格式是：”DataSource-” +   System.identityHashCode(this) |
+| url                           |          | 连接数据库的url，不同数据库不一样。例如：mysql :   jdbc:mysql://10.20.153.104:3306/druid2      oracle :   jdbc:oracle:thin:@10.20.149.85:1521:ocnauto |
+| username                      |          | 连接数据库的用户名                                           |
+| password                      |          | 连接数据库的密码。如果你不希望密码直接写在配置文件中，可以使用ConfigFilter。详细看这里：<https://github.com/alibaba/druid/wiki/%E4%BD%BF%E7%94%A8ConfigFilter> |
+| driverClassName               |          | 根据url自动识别   这一项可配可不配，如果不配置druid会根据url自动识别dbType，然后选择相应的driverClassName(建议配置下) |
+| initialSize                   | 0        | 初始化时建立物理连接的个数。初始化发生在显示调用init方法，或者第一次getConnection时 |
+| maxActive                     | 8        | 最大连接池数量                                               |
+| maxIdle                       | 8        | 已经不再使用，配置了也没效果                                 |
+| minIdle                       |          | 最小连接池数量                                               |
+| maxWait                       |          | 获取连接时最大等待时间，单位毫秒。配置了maxWait之后，缺省启用公平锁，并发效率会有所下降，如果需要可以通过配置useUnfairLock属性为true使用非公平锁。 |
+| poolPreparedStatements        | false    | 是否缓存preparedStatement，也就是PSCache。PSCache对支持游标的数据库性能提升巨大，比如说oracle。在mysql下建议关闭。 |
+| maxOpenPreparedStatements     | -1       | 要启用PSCache，必须配置大于0，当大于0时，poolPreparedStatements自动触发修改为true。在Druid中，不会存在Oracle下PSCache占用内存过多的问题，可以把这个数值配置大一些，比如说100 |
+| validationQuery               |          | 用来检测连接是否有效的sql，要求是一个查询语句。如果validationQuery为null，testOnBorrow、testOnReturn、testWhileIdle都不会其作用。 |
+| testOnBorrow                  | true     | 申请连接时执行validationQuery检测连接是否有效，做了这个配置会降低性能。 |
+| testOnReturn                  | false    | 归还连接时执行validationQuery检测连接是否有效，做了这个配置会降低性能 |
+| testWhileIdle                 | false    | 建议配置为true，不影响性能，并且保证安全性。申请连接的时候检测，如果空闲时间大于timeBetweenEvictionRunsMillis，执行validationQuery检测连接是否有效。 |
+| timeBetweenEvictionRunsMillis |          | 有两个含义： 1)Destroy线程会检测连接的间隔时间2)testWhileIdle的判断依据，详细看testWhileIdle属性的说明 |
+| numTestsPerEvictionRun        |          | 不再使用，一个DruidDataSource只支持一个EvictionRun           |
+| minEvictableIdleTimeMillis    |          |                                                              |
+| connectionInitSqls            |          | 物理连接初始化的时候执行的sql                                |
+| exceptionSorter               |          | 根据dbType自动识别   当数据库抛出一些不可恢复的异常时，抛弃连接 |
+| filters                       |          | 属性类型是字符串，通过别名的方式配置扩展插件，常用的插件有：   监控统计用的filter:stat日志用的filter:log4j防御sql注入的filter:wall |
+| proxyFilters                  |          | 类型是List，如果同时配置了filters和proxyFilters，是组合关系，并非替换关系 |
+
+###### 10、JDBC总结
+
+```java
+总结
+@Test
+public void testUpdateWithTx() {
+		
+	Connection conn = null;
+	try {
+		//1.获取连接的操作（
+		//① 手写的连接：JDBCUtils.getConnection();
+		//② 使用数据库连接池：C3P0;DBCP;Druid
+		//2.对数据表进行一系列CRUD操作
+		//① 使用PreparedStatement实现通用的增删改、查询操作（version 1.0 \ version 2.0)
+//version2.0的增删改public void update(Connection conn,String sql,Object ... args){}
+//version2.0的查询 public <T> T getInstance(Connection conn,Class<T> clazz,String sql,Object ... args){}
+		//② 使用dbutils提供的jar包中提供的QueryRunner类
+			
+		//提交数据
+		conn.commit();
+			
+	
+	} catch (Exception e) {
+		e.printStackTrace();
+			
+			
+		try {
+			//回滚数据
+			conn.rollback();
+		} catch (SQLException e1) {
+			e1.printStackTrace();
+		}
+			
+	}finally{
+		//3.关闭连接等操作
+		//① JDBCUtils.closeResource();
+		//② 使用dbutils提供的jar包中提供的DbUtils类提供了关闭的相关操作
+			
+	}
+}
+```
+
