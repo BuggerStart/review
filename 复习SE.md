@@ -2534,3 +2534,159 @@ public void testUpdateWithTx() {
 }
 ```
 
+————————————————————————————JavaWeb———————————————————————————————————————
+
+# JavaWeb
+
+###### 1、JavaWeb技术体系
+
+![image-20230120131455903](复习SE.assets/image-20230120131455903.png)
+
+###### 2、HTML标签
+
+![image-20230120133311074](复习SE.assets/image-20230120133311074.png)
+
+###### 3、过滤器的三要素
+
+1. 拦截
+
+   过滤器之所以能够对请求进行预处理，关键是对请求进行拦截，把请求拦截下来才能够做后续的操作。而且对于一个具体的过滤器，它必须明确它要拦截的请求，而不是所有请求都拦截。
+
+​	2.过滤
+
+​		根据根据业务功能实际的需求，看看在把请求拦截到之后，需要做什么检查或什么操作，写对应的代码即可。
+
+​	3.放行
+
+​		过滤器完成自己的任务或者是检测到当前请求符合过滤规则，那么可以将请求放行。所谓放行，就是让请求继续去访问它原本要访问的资源。
+
+> 补充：SpringMVC的拦截器也同样具备三要素
+
+###### 4、创建Filter
+
+- 准备工作
+  1. 创建module
+  2. 加入Thymeleaf环境
+  3. 完成首页访问功能
+  4. 创建Target01Servlet以及target01.html
+  5. 创建SpecialServlet以及special.html
+
+example
+
+```java
+public class Target01Filter implements Filter {
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+
+        // 1.打印一句话表明Filter执行了
+        System.out.println("过滤器执行：Target01Filter");
+
+        // 2.检查是否满足过滤条件
+        // 人为设定一个过滤条件：请求参数message是否等于monster
+        // 等于：放行
+        // 不等于：将请求跳转到另外一个页面
+        // ①获取请求参数
+        String message = request.getParameter("message");
+
+        // ②检查请求参数是否等于monster
+        if ("monster".equals(message)) {
+
+            // ③执行放行
+            // FilterChain对象代表过滤器链
+            // chain.doFilter(request, response)方法效果：将请求放行到下一个Filter，
+            // 如果当前Filter已经是最后一个Filter了，那么就将请求放行到原本要访问的目标资源
+            chain.doFilter(request, response);
+
+        }else{
+
+            // ④跳转页面
+            request.getRequestDispatcher("/SpecialServlet?method=toSpecialPage").forward(request, response);
+
+        }
+
+    }
+
+    @Override
+    public void destroy() {
+
+    }
+}
+```
+
+- 进行注册
+
+```xml
+<!-- 配置Target01Filter -->
+<filter>
+    <!-- 配置Filter的友好名称 -->
+    <filter-name>Target01Filter</filter-name>
+
+    <!-- 配置Filter的全类名，便于Servlet容器创建Filter对象 -->
+    <filter-class>com.atguigu.filter.filter.Target01Filter</filter-class>
+</filter>
+
+<!-- 配置Filter要拦截的目标资源 -->
+<filter-mapping>
+    <!-- 指定这个mapping对应的Filter名称 -->
+    <filter-name>Target01Filter</filter-name>
+
+    <!-- 通过请求地址模式来设置要拦截的资源 -->
+    <url-pattern>/Target01Servlet</url-pattern>
+</filter-mapping>
+```
+
+###### 5、Servlet生命周期
+
+![image-20230120182500952](复习SE.assets/image-20230120182500952.png)
+
+###### 6、Filter生命周期
+
+和Servlet生命周期类比，Filter生命周期的关键区别是：**在Web应用启动时创建对象**
+
+| 生命周期阶段 | 执行时机         | 执行次数 |
+| ------------ | ---------------- | -------- |
+| 创建对象     | Web应用启动时    | 一次     |
+| 初始化       | 创建对象后       | 一次     |
+| 拦截请求     | 接收到匹配的请求 | 多次     |
+| 销毁         | Web应用卸载前    | 一次     |
+
+###### 7、监听器
+
+​		监听器：专门用于对其他对象身上发生的事件或状态改变进行监听和相应处理的对象，当被监视的对象发生情况时，立即采取相应的行动。 **Servlet监听器**：Servlet规范中定义的一种特殊类，它用于监听Web应用程序中的ServletContext，HttpSession 和HttpServletRequest等域对象的创建与销毁事件，以及监听这些域对象中的属性发生修改的事件。
+
+- 用法
+
+```java
+public class AtguiguListener implements ServletContextListener {
+    @Override
+    public void contextInitialized(
+            // Event对象代表本次事件，通过这个对象可以获取ServletContext对象本身
+            ServletContextEvent sce) {
+        System.out.println("Hello，我是ServletContext，我出生了！");
+
+        ServletContext servletContext = sce.getServletContext();
+        System.out.println("servletContext = " + servletContext);
+    }
+
+    @Override
+    public void contextDestroyed(ServletContextEvent sce) {
+        System.out.println("Hello，我是ServletContext，我打算去休息一会儿！");
+    }
+}
+```
+
+- 注册监听器
+
+```xml
+<!-- 每一个listener标签对应一个监听器配置，若有多个监听器，则配置多个listener标签即可 -->
+<listener>
+    <!-- 配置监听器指定全类名即可 -->
+    <listener-class>com.atguigu.listener.AtguiguListener</listener-class>
+</listener>
+```
+
