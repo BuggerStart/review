@@ -2690,3 +2690,517 @@ public class AtguiguListener implements ServletContextListener {
 </listener>
 ```
 
+————————————————————————————SSM—————————————————————————————————————————
+
+# MyBatis
+
+###### 1、Mybatis核心配置文件
+
+```xml
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+<!--
+MyBatis核心配置文件中，标签的顺序：
+properties?,settings?,typeAliases?,typeHandlers?,
+objectFactory?,objectWrapperFactory?,reflectorFactory?,
+plugins?,environments?,databaseIdProvider?,mappers?
+-->
+<!--引入properties文件-->
+<properties resource="jdbc.properties" />
+<!--设置类型别名-->
+<typeAliases>
+<!--
+typeAlias：设置某个类型的别名
+属性：
+type：设置需要设置别名的类型
+alias：设置某个类型的别名，若不设置该属性，那么该类型拥有默认的别名，即类名
+且不区分大小写
+-->
+<!--<typeAlias type="com.atguigu.mybatis.pojo.User"></typeAlias>-->
+<!--以包为单位，将包下所有的类型设置默认的类型别名，即类名且不区分大小写-->
+<package name="com.atguigu.mybatis.pojo"/>
+</typeAliases>
+<!--
+environments：配置多个连接数据库的环境
+属性：
+default：设置默认使用的环境的id
+-->
+<environments default="development">
+<!--
+environment：配置某个具体的环境
+属性：
+id：表示连接数据库的环境的唯一标识，不能重复
+-->
+<environment id="development">
+<!--
+transactionManager：设置事务管理方式
+属性：
+type="JDBC|MANAGED"
+JDBC：表示当前环境中，执行SQL时，使用的是JDBC中原生的事务管理方式，事
+务的提交或回滚需要手动处理
+MANAGED：被管理，例如Spring
+-->
+<transactionManager type="JDBC"/>
+<!--
+dataSource：配置数据源
+属性：
+type：设置数据源的类型
+type="POOLED|UNPOOLED|JNDI"
+POOLED：表示使用数据库连接池缓存数据库连接
+UNPOOLED：表示不使用数据库连接池
+JNDI：表示使用上下文中的数据源
+-->
+<dataSource type="POOLED">
+<!--设置连接数据库的驱动-->
+<property name="driver" value="${jdbc.driver}"/>
+<!--设置连接数据库的连接地址-->
+<property name="url" value="${jdbc.url}"/>
+<!--设置连接数据库的用户名-->
+<property name="username" value="${jdbc.username}"/>
+<!--设置连接数据库的密码-->
+<property name="password" value="${jdbc.password}"/>
+</dataSource>
+</environment>
+<environment id="test">
+<transactionManager type="JDBC"/>
+<dataSource type="POOLED">
+<property name="driver" value="com.mysql.cj.jdbc.Driver"/>
+<property name="url"
+value="jdbc:mysql://localhost:3306/ssmserverTimezone=UTC"/>
+<property name="username" value="root"/>
+<property name="password" value="123456"/>
+</dataSource>
+</environment>
+</environments>
+<!--引入映射文件-->
+<mappers>
+<!--<mapper resource="mappers/UserMapper.xml"/>-->
+<!--
+以包为单位引入映射文件
+要求：
+1、mapper接口所在的包要和映射文件所在的包一致
+2、mapper接口要和映射文件的名字一致
+-->
+<package name="com.atguigu.mybatis.mapper"/>
+</mappers>
+</configuration>
+
+```
+
+###### 2、在Mybatis中参数值的两种方式${}和#{}的区别
+
+${}的本质就是字符串拼接，#{}的本质就是占位符赋值 
+
+${}使用字符串拼接的方式拼接sql，若为字符串类型或日期类型的字段进行赋值时，需要手动加单引号；
+
+但是#{}使用占位符赋值的方式拼接sql，此时为字符串类型或日期类型的字段进行赋值时， 可以自动添加单引号
+
+###### 3、多对一映射处理
+
+- 级联方式处理映射
+
+```xml
+<resultMap id="empDeptMap" type="Emp">
+<id column="eid" property="eid"></id>
+<result column="ename" property="ename"></result>
+<result column="age" property="age"></result>
+<result column="sex" property="sex"></result>
+<result column="did" property="dept.did"></result>
+<result column="dname" property="dept.dname"></result>
+</resultMap>
+<!--Emp getEmpAndDeptByEid(@Param("eid") int eid);-->
+<select id="getEmpAndDeptByEid" resultMap="empDeptMap">
+select emp.*,dept.* from t_emp emp left join t_dept dept on emp.did =
+dept.did where emp.eid = #{eid}
+</select>
+```
+
+- 使用association处理映射关系
+
+```xml
+<resultMap id="empDeptMap" type="Emp">
+<id column="eid" property="eid"></id>
+<result column="ename" property="ename"></result>
+<result column="age" property="age"></result>
+<result column="sex" property="sex"></result>
+<association property="dept" javaType="Dept">
+<id column="did" property="did"></id>
+<result column="dname" property="dname"></result>
+</association>
+</resultMap>
+<!--Emp getEmpAndDeptByEid(@Param("eid") int eid);-->
+<select id="getEmpAndDeptByEid" resultMap="empDeptMap">
+select emp.*,dept.* from t_emp emp left join t_dept dept on emp.did =
+dept.did where emp.eid = #{eid}
+</select>
+```
+
+###### 4、分步查询
+
+```java
+/**
+* 通过分步查询查询员工信息
+* @param eid
+* @return
+*/
+Emp getEmpByStep(@Param("eid") int eid);
+```
+
+```xml
+<resultMap id="empDeptStepMap" type="Emp">
+<id column="eid" property="eid"></id>
+<result column="ename" property="ename"></result>
+<result column="age" property="age"></result>
+<result column="sex" property="sex"></result>
+<!--
+select：设置分步查询，查询某个属性的值的sql的标识（namespace.sqlId）
+column：将sql以及查询结果中的某个字段设置为分步查询的条件
+-->
+<association property="dept"
+select="com.atguigu.MyBatis.mapper.DeptMapper.getEmpDeptByStep" column="did">
+</association>
+</resultMap>
+<!--Emp getEmpByStep(@Param("eid") int eid);-->
+<select id="getEmpByStep" resultMap="empDeptStepMap">
+select * from t_emp where eid = #{eid}
+</select>
+```
+
+```xml
+/**
+* 分步查询的第二步： 根据员工所对应的did查询部门信息
+* @param did
+* @return
+*/
+Dept getEmpDeptByStep(@Param("did") int did);
+<!--Dept getEmpDeptByStep(@Param("did") int did);-->
+<select id="getEmpDeptByStep" resultType="Dept">
+select * from t_dept where did = #{did}
+</select>
+```
+
+###### 5、一对多映射
+
+- collection
+
+```java
+/**
+* 根据部门id查新部门以及部门中的员工信息
+* @param did
+* @return
+*/
+Dept getDeptEmpByDid(@Param("did") int did);
+```
+
+```xml
+<resultMap id="deptEmpMap" type="Dept">
+<id property="did" column="did"></id>
+<result property="dname" column="dname"></result>
+<!--
+ofType：设置collection标签所处理的集合属性中存储数据的类型
+-->
+<collection property="emps" ofType="Emp">
+<id property="eid" column="eid"></id>
+<result property="ename" column="ename"></result>
+<result property="age" column="age"></result>
+<result property="sex" column="sex"></result>
+</collection>
+</resultMap>
+<!--Dept getDeptEmpByDid(@Param("did") int did);-->
+<select id="getDeptEmpByDid" resultMap="deptEmpMap">
+select dept.*,emp.* from t_dept dept left join t_emp emp on dept.did =
+emp.did where dept.did = #{did}
+</select>
+```
+
+###### 6、Mybatis缓存
+
+- 一级缓存
+
+  一级缓存是SqlSession级别的，通过同一个SqlSession查询的数据会被缓存，下次查询相同的数据，就会从缓存中直接获取，不会从数据库重新访问 使一级缓存失效的四种情况：
+
+  1) 不同的SqlSession对应不同的一级缓存 
+  2) 同一个SqlSession但是查询条件不同 
+  3) 同一个SqlSession两次查询期间执行了任何一次增删改操作 
+  4) 同一个SqlSession两次查询期间手动清空了缓存
+
+- 二级缓存
+
+二级缓存是SqlSessionFactory级别，通过同一个SqlSessionFactory创建的SqlSession查询的结果会被 缓存；此后若再次执行相同的查询语句，结果就会从缓存中获取。
+
+二级缓存开启的条件： a>在核心配置文件中，设置全局配置属性cacheEnabled="true"，默认为true，不需要设置
+
+​										 b>在映射文件中设置标签
+
+​										 c>二级缓存必须在SqlSession关闭或提交之后有效 
+
+​										d>查询的数据所转换的实体类类型必须实现序列化的接口
+
+ 使二级缓存失效的情况： 两次查询之间执行了任意的增删改，会使一级和二级缓存同时失效
+
+###### 7、Mybatis缓存查询的顺序
+
+先查询二级缓存，因为二级缓存中可能会有其他程序已经查出来的数据，可以拿来直接使用。
+
+ 如果二级缓存没有命中，再查询一级缓存
+
+ 如果一级缓存也没有命中，则查询数据库
+
+ SqlSession关闭之后，一级缓存中的数据会写入二级缓存
+
+###### 8、关于mbg逆向工程
+
+- 依赖和插件
+
+```xml
+<!-- 依赖MyBatis核心包 -->
+<dependencies>
+<dependency>
+<groupId>org.mybatis</groupId>
+<artifactId>mybatis</artifactId>
+<version>3.5.7</version>
+</dependency>
+<!-- junit测试 -->
+<dependency>
+<groupId>junit</groupId>
+<artifactId>junit</artifactId>
+<version>4.12</version>
+<scope>test</scope>
+</dependency>
+<!-- log4j日志 -->
+<dependency>
+<groupId>log4j</groupId>
+<artifactId>log4j</artifactId>
+<version>1.2.17</version>
+</dependency>
+<dependency>
+<groupId>mysql</groupId>
+<artifactId>mysql-connector-java</artifactId>
+<version>8.0.16</version>
+</dependency>
+</dependencies>
+<!-- 控制Maven在构建过程中相关配置 -->
+<build>
+<!-- 构建过程中用到的插件 -->
+<plugins>
+<!-- 具体插件，逆向工程的操作是以构建过程中插件形式出现的 -->
+<plugin>
+<groupId>org.mybatis.generator</groupId>
+<artifactId>mybatis-generator-maven-plugin</artifactId>
+<version>1.3.0</version>
+<!-- 插件的依赖 -->
+<dependencies>
+<!-- 逆向工程的核心依赖 -->
+<dependency>
+<groupId>org.mybatis.generator</groupId>
+<artifactId>mybatis-generator-core</artifactId>
+<version>1.3.2</version>
+</dependency>
+<!-- MySQL驱动 -->
+<dependency>
+<groupId>mysql</groupId>
+<artifactId>mysql-connector-java</artifactId>
+<version>8.0.16</version>
+</dependency>
+</dependencies>
+</plugin>
+</plugins>
+</build>
+
+```
+
+- 创建逆向工程的配置文件
+
+> 文件名必须是：generatorConfig.xml
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE generatorConfiguration
+PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN"
+"http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd">
+<generatorConfiguration>
+<!--
+targetRuntime: 执行生成的逆向工程的版本
+MyBatis3Simple: 生成基本的CRUD（清新简洁版）
+MyBatis3: 生成带条件的CRUD（奢华尊享版）
+-->
+<context id="DB2Tables" targetRuntime="MyBatis3">
+<!-- 数据库的连接信息 -->
+<jdbcConnection driverClass="com.mysql.cj.jdbc.Driver"
+connectionURL="jdbc:mysql://localhost:3306/mybatis?
+serverTimezone=UTC"
+userId="root"
+password="123456">
+</jdbcConnection>
+<!-- javaBean的生成策略-->
+<javaModelGenerator targetPackage="com.atguigu.mybatis.pojo"
+targetProject=".\src\main\java">
+<property name="enableSubPackages" value="true" />
+<property name="trimStrings" value="true" />
+</javaModelGenerator>
+<!-- SQL映射文件的生成策略 -->
+<sqlMapGenerator targetPackage="com.atguigu.mybatis.mapper"
+targetProject=".\src\main\resources">
+<property name="enableSubPackages" value="true" />
+</sqlMapGenerator>
+<!-- Mapper接口的生成策略 -->
+<javaClientGenerator type="XMLMAPPER"
+targetPackage="com.atguigu.mybatis.mapper" targetProject=".\src\main\java">
+<property name="enableSubPackages" value="true" />
+</javaClientGenerator>
+<!-- 逆向分析的表 -->
+<!-- tableName设置为*号，可以对应所有表，此时不写domainObjectName -->
+<!-- domainObjectName属性指定生成出来的实体类的类名 -->
+<table tableName="t_emp" domainObjectName="Emp"/>
+<table tableName="t_dept" domainObjectName="Dept"/>
+</context>
+</generatorConfiguration>
+
+```
+
+###### 9、QBC查询
+
+```java
+@Test
+public void testMBG(){
+try {
+InputStream is = Resources.getResourceAsStream("mybatis-config.xml");
+SqlSessionFactory sqlSessionFactory = new
+SqlSessionFactoryBuilder().build(is);
+SqlSession sqlSession = sqlSessionFactory.openSession(true);
+EmpMapper mapper = sqlSession.getMapper(EmpMapper.class);
+//查询所有数据
+/*List<Emp> list = mapper.selectByExample(null);
+list.forEach(emp -> System.out.println(emp));*/
+//根据条件查询
+/*EmpExample example = new EmpExample();
+example.createCriteria().andEmpNameEqualTo("张
+三").andAgeGreaterThanOrEqualTo(20);
+example.or().andDidIsNotNull();
+List<Emp> list = mapper.selectByExample(example);
+list.forEach(emp -> System.out.println(emp));*/
+mapper.updateByPrimaryKeySelective(new
+Emp(1,"admin",22,null,"456@qq.com",3));
+} catch (IOException e) {
+e.printStackTrace();
+}
+}
+```
+
+###### 10、分页插件
+
+limit index,pageSize
+
+ pageSize：每页显示的条数 
+
+pageNum：当前页的页码
+
+ index：当前页的起始索引 index=(pageNum-1)*pageSize 
+
+count：总记录数
+
+ totalPage：总页数 totalPage = count / pageSize; 
+
+if(count % pageSize != 0){ totalPage += 1; }
+
+ pageSize=4，pageNum=1，index=0 limit 0,4
+
+ pageSize=4，pageNum=3，index=8 limit 8,4
+
+ pageSize=4，pageNum=6，index=20 limit 8,4
+
+首页 上一页 2 3 4 5 6 下一页 末页
+
+- 使用步骤
+
+  ①添加依赖
+
+  ```xml
+  <dependency>
+  <groupId>com.github.pagehelper</groupId>
+  <artifactId>pagehelper</artifactId>
+  <version>5.2.0</version>
+  </dependency>
+  ```
+
+  ②配置分页插件
+
+  在MyBatis的核心配置文件中配置插件
+
+  ```xml
+  <plugins>
+  <!--设置分页插件-->
+  <plugin interceptor="com.github.pagehelper.PageInterceptor"></plugin>
+  </plugins>
+  ```
+
+- 插件的使用
+
+a>在查询功能之前使用PageHelper.startPage(int pageNum, int pageSize)开启分页功能
+
+> pageNum：当前页的页码 
+>
+> pageSize：每页显示的条数
+
+b>在查询获取list集合之后，使用PageInfo pageInfo = new PageInfo<>(List list, int navigatePages)获取分页相关数据
+
+> list：分页之后的数据 
+>
+> navigatePages：导航分页的页码数
+
+c>分页相关数据
+
+> PageInfo{ pageNum=8, pageSize=4, size=2, startRow=29, endRow=30, total=30, pages=8, list=Page{count=true, pageNum=8, pageSize=4, startRow=28, endRow=32, total=30, pages=8, reasonable=false, pageSizeZero=false}, prePage=7, nextPage=0, isFirstPage=false, isLastPage=true, hasPreviousPage=true, hasNextPage=false, navigatePages=5, navigateFirstPage4, navigateLastPage8, navigatepageNums=[4, 5, 6, 7, 8] }
+>
+>  pageNum：当前页的页码 
+>
+> pageSize：每页显示的条数
+>
+>  size：当前页显示的真实条数
+>
+>  total：总记录数 
+>
+> pages：总页数 
+>
+> prePage：上一页的页码
+>
+> nextPage：下一页的页码 
+>
+> isFirstPage/isLastPage：是否为第一页/最后一页
+>
+>  hasPreviousPage/hasNextPage：是否存在上一页/下一页
+>
+>  navigatePages：导航分页的页码数 navigatepageNums：导航分页的页码，[1,2,3,4,5]
+
+——————————————————————————————————Spring——————————————————————————————
+
+# Spring
+
+###### 1、IOC容器
+
+IOC:Inversion of Control, 反转控制
+
+DI：Dependency Injection 依赖注入，DI是IOC的另一种表述方式：即组件以一些预先定义好的方式（例如：setter方法）接受来自于容器的资源注入。相对于IOC而言，这种表述更直接。
+
+结论：IOC就是一种反转控制的思想，而DI是对IOC的一种具体实现。
+
+###### 2、IOC容器在Spring中的实现
+
+Spring 的 IOC 容器就是 IOC 思想的一个落地的产品实现。IOC 容器中管理的组件也叫做 bean。在创建 bean 之前，首先需要创建 IOC 容器。Spring 提供了 IOC 容器的两种实现方式：
+
+- BeanFactory
+
+​		这是 IOC 容器的基本实现，是 Spring 内部使用的接口。面向 Spring 本身，不提供给开发人员使用。
+
+- ApplicationContext
+
+  BeanFactory 的子接口，提供了更多高级特性。面向 Spring 的使用者，几乎所有场合都使用 ApplicationContext 而不是底层的 BeanFactory。
+
+- ApplicationContext的主要实现类
+
+  ![image-20230120223557656](复习SE.assets/image-20230120223557656.png)
+
+![image-20230120223625384](复习SE.assets/image-20230120223625384.png)
