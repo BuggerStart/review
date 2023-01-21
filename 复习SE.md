@@ -3204,3 +3204,215 @@ Spring 的 IOC 容器就是 IOC 思想的一个落地的产品实现。IOC 容�
   ![image-20230120223557656](复习SE.assets/image-20230120223557656.png)
 
 ![image-20230120223625384](复习SE.assets/image-20230120223625384.png)
+
+###### 3、基于XML管理bean
+
+引入依赖
+
+```xml
+<dependencies>
+<!-- 基于Maven依赖传递性，导入spring-context依赖即可导入当前所需所有jar包 -->
+<dependency>
+<groupId>org.springframework</groupId>
+<artifactId>spring-context</artifactId>
+<version>5.3.1</version>
+</dependency>
+<!-- junit测试 -->
+<dependency>
+<groupId>junit</groupId>
+<artifactId>junit</artifactId>
+<version>4.12</version>
+<scope>test</scope>
+</dependency>
+</dependencies>
+
+```
+
+- Spring的配置文件中配置Bean
+
+```xml
+<!--
+配置HelloWorld所对应的bean，即将HelloWorld的对象交给Spring的IOC容器管理
+通过bean标签配置IOC容器所管理的bean
+属性：
+id：设置bean的唯一标识
+class：设置bean所对应类型的全类名
+-->
+<bean id="helloworld" class="com.atguigu.spring.bean.HelloWorld"></bean>
+```
+
+- 创建测试类
+
+```java
+@Test
+public void testHelloWorld(){
+ApplicationContext ac = new
+ClassPathXmlApplicationContext("applicationContext.xml");
+HelloWorld helloworld = (HelloWorld) ac.getBean("helloworld");
+helloworld.sayHello();
+}
+```
+
+> 补充：Spring 底层默认通过反射技术调用组件类的无参构造器来创建组件对象，这一点需要注意。如果在需要 无参构造器时，没有无参构造器，则会抛出异常
+
+###### 4、获取Bean
+
+- 方式一：根据id获取
+
+  由于 id 属性指定了 bean 的唯一标识，所以根据 bean 标签的 id 属性可以精确获取到一个组件对象。 上个实验中我们使用的就是这种方式。
+
+- 方式二：根据类型获取
+
+```java
+@Test
+public void testHelloWorld(){
+ApplicationContext ac = new
+ClassPathXmlApplicationContext("applicationContext.xml");
+HelloWorld bean = ac.getBean(HelloWorld.class);
+bean.sayHello();
+}
+
+```
+
+- 方式三：根据id和类型
+
+```java
+@Test
+public void testHelloWorld(){
+ApplicationContext ac = new
+ClassPathXmlApplicationContext("applicationContext.xml");
+HelloWorld bean = ac.getBean("helloworld", HelloWorld.class);
+bean.sayHello();
+}
+```
+
+###### 5、依赖注入之setter注入
+
+- 为配置的bean时属性赋值
+
+  ```xml
+  <bean id="studentOne" class="com.atguigu.spring.bean.Student">
+  <!-- property标签：通过组件类的setXxx()方法给组件对象设置属性 -->
+  <!-- name属性：指定属性名（这个属性名是getXxx()、setXxx()方法定义的，和成员变量无关）
+  -->
+  <!-- value属性：指定属性值 -->
+  <property name="id" value="1001"></property>
+  <property name="name" value="张三"></property>
+  <property name="age" value="23"></property>
+  <property name="sex" value="男"></property>
+  </bean>
+  ```
+
+  - 测试
+
+  ```java
+  @Test
+  public void testDIBySet(){
+  ApplicationContext ac = new ClassPathXmlApplicationContext("spring-di.xml");
+  Student studentOne = ac.getBean("studentOne", Student.class);
+  System.out.println(studentOne);
+  }
+  ```
+
+  
+
+###### 6、依赖注入之构造器注入
+
+- 在Student类中有参构造
+
+```java
+public Student(Integer id, String name, Integer age, String sex) {
+this.id = id;
+this.name = name;
+this.age = age;
+this.sex = sex;
+}
+```
+
+- 配置Bean
+
+  ```xml
+  <bean id="studentTwo" class="com.atguigu.spring.bean.Student">
+  <constructor-arg value="1002"></constructor-arg>
+  <constructor-arg value="李四"></constructor-arg>
+  <constructor-arg value="33"></constructor-arg>
+  <constructor-arg value="女"></constructor-arg>
+  </bean>
+  ```
+
+  > constructor-arg标签还有两个属性可以进一步描述构造器参数：
+  >
+  >  index属性：指定参数所在位置的索引（从0开始）
+  >
+  >  name属性：指定参数名
+
+- 测试
+
+```java
+@Test
+public void testDIBySet(){
+ApplicationContext ac = new ClassPathXmlApplicationContext("spring-di.xml");
+Student studentOne = ac.getBean("studentTwo", Student.class);
+System.out.println(studentOne);
+}
+```
+
+###### 7、为类属性赋值
+
+- 配置Clazz类型的bean
+
+  方式一：引用外部已声明的bean
+
+```xml
+<bean id="clazzOne" class="com.atguigu.spring.bean.Clazz">
+<property name="clazzId" value="1111"></property>
+<property name="clazzName" value="财源滚滚班"></property>
+</bean>
+```
+
+```xml
+<bean id="studentFour" class="com.atguigu.spring.bean.Student">
+<property name="id" value="1004"></property>
+<property name="name" value="赵六"></property>
+<property name="age" value="26"></property>
+<property name="sex" value="女"></property>
+<!-- ref属性：引用IOC容器中某个bean的id，将所对应的bean为属性赋值 -->
+<property name="clazz" ref="clazzOne"></property>
+</bean>
+```
+
+​		方式二：内部bean
+
+```xml
+<bean id="studentFour" class="com.atguigu.spring.bean.Student">
+<property name="id" value="1004"></property>
+<property name="name" value="赵六"></property>
+<property name="age" value="26"></property>
+<property name="sex" value="女"></property>
+<property name="clazz">
+<!-- 在一个bean中再声明一个bean就是内部bean -->
+<!-- 内部bean只能用于给属性赋值，不能在外部通过IOC容器获取，因此可以省略id属性 -->
+<bean id="clazzInner" class="com.atguigu.spring.bean.Clazz">
+<property name="clazzId" value="2222"></property>
+<property name="clazzName" value="远大前程班"></property>
+</bean>
+</property>
+</bean>
+
+```
+
+​		方式三：级联属性赋值
+
+```xml
+<bean id="studentFour" class="com.atguigu.spring.bean.Student">
+<property name="id" value="1004"></property>
+<property name="name" value="赵六"></property>
+<property name="age" value="26"></property>
+<property name="sex" value="女"></property>
+<!-- 一定先引用某个bean为属性赋值，才可以使用级联方式更新属性 -->
+<property name="clazz" ref="clazzOne"></property>
+<property name="clazz.clazzId" value="3333"></property>
+<property name="clazz.clazzName" value="最强王者班"></property>
+</bean>
+```
+
