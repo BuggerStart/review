@@ -3416,3 +3416,260 @@ System.out.println(studentOne);
 </bean>
 ```
 
+###### 8、为数据类型进行赋值
+
+- Student中添加以下代码
+
+  ```java
+  private String[] hobbies;
+  public String[] getHobbies() {
+  return hobbies;
+  }
+  public void setHobbies(String[] hobbies) {
+  this.hobbies = hobbies;
+  }
+  ```
+
+- 配置bean
+
+```xml
+<bean id="studentFour" class="com.atguigu.spring.bean.Student">
+<property name="id" value="1004"></property>
+<property name="name" value="赵六"></property>
+<property name="age" value="26"></property>
+<property name="sex" value="女"></property>
+<!-- ref属性：引用IOC容器中某个bean的id，将所对应的bean为属性赋值 -->
+<property name="clazz" ref="clazzOne"></property>
+<property name="hobbies">
+<array>
+<value>抽烟</value>
+<value>喝酒</value>
+<value>烫头</value>
+</array>
+</property>
+</bean>
+```
+
+###### 9、为集合属性赋值
+
+- 为List集合类型属性赋值
+
+  ```java
+  private List<Student> students;
+  public List<Student> getStudents() {
+  return students;
+  }
+  public void setStudents(List<Student> students) {
+  this.students = students;
+  }
+  ```
+
+- 配置bean
+
+```xml
+<bean id="clazzTwo" class="com.atguigu.spring.bean.Clazz">
+<property name="clazzId" value="4444"></property>
+<property name="clazzName" value="Javaee0222"></property>
+<property name="students">
+<list>
+<ref bean="studentOne"></ref>
+<ref bean="studentTwo"></ref>
+<ref bean="studentThree"></ref>
+</list>
+</property>
+</bean>
+```
+
+> 若为Set集合类型属性赋值，只需要将其中的list标签改为set标签
+
+- 为Map集合类型属性赋值
+
+```java
+public class Teacher {
+private Integer teacherId;
+private String teacherName;
+public Integer getTeacherId() {
+return teacherId;
+}
+public void setTeacherId(Integer teacherId) {
+this.teacherId = teacherId;
+}
+public String getTeacherName() {
+return teacherName;
+}
+public void setTeacherName(String teacherName) {
+this.teacherName = teacherName;
+}
+public Teacher(Integer teacherId, String teacherName) {
+this.teacherId = teacherId;
+this.teacherName = teacherName;
+}
+public Teacher() {
+}
+@Override
+public String toString() {
+return "Teacher{" +
+"teacherId=" + teacherId +
+", teacherName='" + teacherName + '\'' +
+'}';
+}
+}
+```
+
+在Student类中添加以下代码：
+
+```java
+private Map<String, Teacher> teacherMap;
+public Map<String, Teacher> getTeacherMap() {
+return teacherMap;
+}
+public void setTeacherMap(Map<String, Teacher> teacherMap) {
+this.teacherMap = teacherMap;
+}
+```
+
+配置bean：
+
+```xml
+<bean id="teacherOne" class="com.atguigu.spring.bean.Teacher">
+<property name="teacherId" value="10010"></property>
+<property name="teacherName" value="大宝"></property>
+</bean>
+<bean id="teacherTwo" class="com.atguigu.spring.bean.Teacher">
+<property name="teacherId" value="10086"></property>
+<property name="teacherName" value="二宝"></property>
+</bean>
+<bean id="studentFour" class="com.atguigu.spring.bean.Student">
+<property name="id" value="1004"></property>
+<property name="name" value="赵六"></property>
+<property name="age" value="26"></property>
+<property name="sex" value="女"></property>
+<!-- ref属性：引用IOC容器中某个bean的id，将所对应的bean为属性赋值 -->
+<property name="clazz" ref="clazzOne"></property>
+<property name="hobbies">
+<array>
+<value>抽烟</value>
+<value>喝酒</value>
+<value>烫头</value>
+</array>
+</property>
+<property name="teacherMap">
+<map>
+<entry>
+<key>
+<value>10010</value>
+</key>
+<ref bean="teacherOne"></ref>
+</entry>
+<entry>
+<key>
+<value>10086</value>
+</key>
+<ref bean="teacherTwo"></ref>
+</entry>
+</map>
+</property>
+</bean>
+```
+
+###### 10、引入外部文件
+
+- 加入依赖
+
+```xml
+<!-- MySQL驱动 -->
+<dependency>
+<groupId>mysql</groupId>
+<artifactId>mysql-connector-java</artifactId>
+<version>8.0.16</version>
+</dependency>
+<!-- 数据源 -->
+<dependency>
+<groupId>com.alibaba</groupId>
+<artifactId>druid</artifactId>
+<version>1.0.31</version>
+</dependency>
+```
+
+- 创建外部文件
+
+```properties
+jdbc.user=root
+jdbc.password=atguigu
+jdbc.url=jdbc:mysql://localhost:3306/ssm?serverTimezone=UTC
+jdbc.driver=com.mysql.cj.jdbc.Driver
+```
+
+- 引入属性文件
+
+```xml
+<!-- 引入外部属性文件 -->
+<context:property-placeholder location="classpath:jdbc.properties"/>
+```
+
+- 配置bean
+
+```xml
+<bean id="druidDataSource" class="com.alibaba.druid.pool.DruidDataSource">
+<property name="url" value="${jdbc.url}"/>
+<property name="driverClassName" value="${jdbc.driver}"/>
+<property name="username" value="${jdbc.user}"/>
+<property name="password" value="${jdbc.password}"/>
+</bean>
+```
+
+- Test
+
+```java
+@Test
+public void testDataSource() throws SQLException {
+ApplicationContext ac = new ClassPathXmlApplicationContext("springdatasource.xml");
+DataSource dataSource = ac.getBean(DataSource.class);
+Connection connection = dataSource.getConnection();
+System.out.println(connection);
+}
+```
+
+###### 11、关于bean文件的作用域
+
+在Spring中可以通过配置bean标签的scope属性来指定bean的作用域范围，各取值含义参加下表：
+
+![image-20230121140500045](复习SE.assets/image-20230121140500045.png)
+
+如果是WebapplicationContext环境下还会有另外两个作用域（但是不常用）：
+
+![image-20230121140601651](复习SE.assets/image-20230121140601651.png)
+
+- 创建一个Student类
+
+-  配置一个bean文件
+
+  ```xml
+  <!-- scope属性：取值singleton（默认值），bean在IOC容器中只有一个实例，IOC容器初始化时创建
+  对象 -->
+  <!-- scope属性：取值prototype，bean在IOC容器中可以有多个实例，getBean()时创建对象 -->
+  <bean class="com.atguigu.bean.User" scope="prototype"></bean>
+  ```
+
+- 测试
+
+  ```java
+  @Test
+  public void testBeanScope(){
+  ApplicationContext ac = new ClassPathXmlApplicationContext("springscope.xml");
+  User user1 = ac.getBean(User.class);
+  User user2 = ac.getBean(User.class);
+  System.out.println(user1==user2);  //通过IOC所获取的实例，是单例模式
+  }
+  ```
+
+###### 12、bean的生命周期
+
+- bean对象创建（调用无参构造器）
+- 给bean对象设置属性
+- bean对象初始化之前操作（由bean的后置处理器负责）
+- bean对象初始化（需在配置bean时指定初始化方法）
+- bean对象初始化之后操作（由bean的后置处理器负责）
+- bean对象就绪可以使用
+- bean对象销毁（需在配置bean时指定销毁方法）
+- IOC容器关闭
