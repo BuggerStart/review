@@ -5241,6 +5241,57 @@ return user;
   }
   ```
 
+另一种实现方法
+
+- 页面表单
+
+```html
+<form method="post" action="/upload" enctype="multipart/form-data">
+    <input type="file" name="file"><br>
+    <input type="submit" value="提交">
+</form>
+```
+
+- 文件上传代码
+
+  ```java
+   /**
+       * MultipartFile 自动封装上传过来的文件
+       * @param email
+       * @param username
+       * @param headerImg
+       * @param photos
+       * @return
+       */
+      @PostMapping("/upload")
+      public String upload(@RequestParam("email") String email,
+                           @RequestParam("username") String username,
+                           @RequestPart("headerImg") MultipartFile headerImg,
+                           @RequestPart("photos") MultipartFile[] photos) throws IOException {
+  
+          log.info("上传的信息：email={}，username={}，headerImg={}，photos={}",
+                  email,username,headerImg.getSize(),photos.length);
+  
+          if(!headerImg.isEmpty()){
+              //保存到文件服务器，OSS服务器
+              String originalFilename = headerImg.getOriginalFilename();
+              headerImg.transferTo(new File("H:\\cache\\"+originalFilename));
+          }
+  
+          if(photos.length > 0){
+              for (MultipartFile photo : photos) {
+                  if(!photo.isEmpty()){
+                      String originalFilename = photo.getOriginalFilename();
+                      photo.transferTo(new File("H:\\cache\\"+originalFilename));
+                  }
+              }
+          }
+  
+  
+          return "main";
+      }
+  ```
+
 ###### 15、拦截器
 
 SpringMVC中的拦截器用于拦截控制器方法的执行
@@ -5540,3 +5591,6 @@ initFlashMapManager(context);
 9.  根据返回的ModelAndView（此时会判断是否存在异常：如果存在异常，则执行 HandlerExceptionResolver进行异常处理）选择一个适合的ViewResolver进行视图解析，根据Model 和View，来渲染视图。
 10.   渲染视图完毕执行拦截器的afterCompletion(…)方法【逆向】。
 11.   将渲染结果返回给客户端。
+
+
+
